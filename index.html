@@ -476,12 +476,19 @@ document.getElementById('code-input').addEventListener('keydown',e=>{if(e.key===
 
 async function openMainWithSymbol(sym){
   currentSymbol=sym;
-  document.getElementById('code-err').textContent='⏳ טוען נתונים...';
-  await loadData();
+  const errEl=document.getElementById('code-err');
+  if(errEl)errEl.textContent='⏳ טוען נתונים...';
+  try{
+    await loadData();
+  }catch(e){
+    initState();
+  }
   if(!state.school.symbol)state.school.symbol=sym;
-  document.getElementById('lock-screen').style.display='none';
-  document.getElementById('main-screen').style.display='block';
-  populateSchool();buildTabs();renderSection();populateFilters();
+  const lock=document.getElementById('lock-screen');
+  const main=document.getElementById('main-screen');
+  if(lock)lock.style.display='none';
+  if(main)main.style.display='block';
+  try{populateSchool();buildTabs();renderSection();populateFilters();}catch(e){console.error(e);}
 }
 
 function openMain(){
