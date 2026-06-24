@@ -133,13 +133,24 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
 .p-high{background:#fdf0f0;color:#922b21;border-color:#e8aaaa;font-weight:600}
 .p-med{background:#fef9e7;color:#7d6608;border-color:#f0d080}
 .p-low{background:#f4f7fb;color:#555;border-color:#ccc}
-/* TIMELINE */
-.timeline-wrap{overflow-x:auto;background:#fff;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:12px}
-.timeline-grid{display:grid;grid-template-columns:160px repeat(12,1fr);min-width:700px;gap:1px;background:#eee;border:1px solid #ddd;border-radius:6px;overflow:hidden}
-.tl-cell{background:#fff;padding:4px 5px;font-size:11px}
-.tl-header{background:#1a3a5c;color:#fff;font-weight:600;text-align:center;font-size:11px;padding:5px 3px}
-.tl-label{background:#f4f7fb;font-size:11px;color:#333;padding:5px 7px;display:flex;align-items:center;gap:4px}
-.tl-bar{border-radius:3px;height:18px;margin:1px 0;display:flex;align-items:center;padding:0 4px;font-size:10px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+/* CALENDAR */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#ddd;border:1px solid #ddd;border-radius:8px;overflow:hidden}
+.cal-cell{background:#fff;min-height:80px;padding:3px;font-size:11px;vertical-align:top}
+.cal-cell.other-month{background:#f8f8f8;color:#ccc}
+.cal-cell.today{background:#eaf4fb}
+.cal-header-cell{background:#1a3a5c;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:600}
+.cal-day-num{font-size:12px;font-weight:600;color:#555;margin-bottom:3px}
+.cal-event{border-radius:3px;padding:2px 4px;font-size:10px;color:#fff;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-event:hover{opacity:.85}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-nav button{background:#1a3a5c;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px}
+.cal-nav h3{font-size:16px;color:#1a3a5c;font-weight:600}
+.cal-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,.2);z-index:1000;max-width:420px;width:90%;direction:rtl}
+.cal-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:999}
+.cal-popup h3{font-size:15px;color:#1a3a5c;margin-bottom:12px}
+.cal-popup-row{font-size:13px;margin-bottom:6px;display:flex;gap:8px}
+.cal-popup-label{color:#888;min-width:70px}
+.cal-popup-val{color:#222;font-weight:500}
 /* PDF */
 @media print{
   .topbar,.mode-bar,.domain-tabs,.grade-tabs,.add-st-btn,.add-row-btn,.st-del,.del-row,.btn,.chips-block,.school-box>*:not(.school-grid){display:none!important}
@@ -202,6 +213,7 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
       <button class="btn" style="background:#6c3483;color:#fff" onclick="exportPDF()">🖨 PDF להנהלה</button>
       <button class="btn" style="background:#e67e22;color:#fff" onclick="exportMobilePDF()">📱 PDF לנייד</button>
       <button class="btn" style="background:#117864;color:#fff" onclick="emailPDFToSupervisor()">📧 שלח PDF למנחה</button>
+      <button class="btn" style="background:#1a5276;color:#fff" onclick="emailPDFToSelf()">📧 שלח PDF לעצמי</button>
       <button class="btn btn-lock" onclick="lockApp()">🔒 נעל</button>
       <button class="btn" style="background:#922b21;color:#fff" onclick="clearAllData()">🗑 נקה הכל</button>
     </div>
@@ -209,10 +221,10 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
 
   <div class="school-box">
     <div class="school-grid">
-      <div class="fld"><label>שם בית הספר <span style="color:#c0392b">*</span></label><input type="text" id="school-name" placeholder='שם ביה"ס' oninput="validateSchoolField(this,'school-name-err')" required></div>
+      <div class="fld"><label>שם בית הספר <span style="color:#c0392b">*</span></label><input type="text" id="school-name" placeholder='שם ביה"ס' oninput="validateSchoolField(this,'school-name-err');saveSchoolField('name',this.value)" required></div>
       <div class="fld"><label>סמל מוסד <span style="color:#c0392b">*</span></label><input type="text" id="school-symbol" placeholder="123456" oninput="validateSchoolField(this,'school-symbol-err')" required></div>
-      <div class="fld"><label>שם הרכז/ת החברתי <span style="color:#c0392b">*</span></label><input type="text" id="coord-name" placeholder="שם מלא" oninput="validateSchoolField(this,'coord-name-err')" required></div>
-      <div class="fld"><label>טלפון רכז/ת <span style="color:#c0392b">*</span></label><input type="tel" id="coord-phone" placeholder="05X-XXXXXXX" oninput="validateSchoolField(this,'coord-phone-err')" required></div>
+      <div class="fld"><label>שם הרכז/ת החברתי <span style="color:#c0392b">*</span></label><input type="text" id="coord-name" placeholder="שם מלא" oninput="validateSchoolField(this,'coord-name-err');saveSchoolField('coord',this.value)" required></div>
+      <div class="fld"><label>טלפון רכז/ת <span style="color:#c0392b">*</span></label><input type="tel" id="coord-phone" placeholder="05X-XXXXXXX" oninput="validateSchoolField(this,'coord-phone-err');saveSchoolField('phone',this.value)" required></div>
       <div class="fld" style="grid-column:1/-1"><label>מנחה אחראי/ת <span style="color:#c0392b">*</span></label>
         <select id="supervisor-name" onchange="validateSchoolField(this,'supervisor-err')" style="padding:7px 9px;font-size:13px;border:1px solid #ccc;border-radius:6px;background:#fff;width:100%;max-width:320px">
           <option value="">— בחר/י מנחה —</option>
@@ -263,10 +275,23 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
   </div>
 
   <div id="timeline-mode" style="display:none">
-    <div class="timeline-wrap">
-      <div style="font-size:14px;font-weight:600;color:#1a3a5c;margin-bottom:12px">📅 ציר זמן שנתי — כל הפעולות לפי חודשים</div>
-      <div id="timeline-content"></div>
+    <div style="background:#fff;border:1px solid #ddd;border-radius:10px;padding:16px;margin-bottom:12px">
+      <div class="cal-nav">
+        <button onclick="calPrev()">→ חודש קודם</button>
+        <h3 id="cal-title"></h3>
+        <button onclick="calNext()">חודש הבא ←</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
     </div>
+    <div style="font-size:12px;color:#888;text-align:center">לחצו על פעולה בלוח לצפייה בפרטיה המלאים</div>
+  </div>
+  <div id="cal-popup-overlay" class="cal-popup-overlay" style="display:none" onclick="closeCalPopup()"></div>
+  <div id="cal-popup" class="cal-popup" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 id="cal-popup-title"></h3>
+      <button onclick="closeCalPopup()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#888">✕</button>
+    </div>
+    <div id="cal-popup-body"></div>
   </div>
 </div>
 
@@ -492,12 +517,25 @@ function validateAllSchoolFields(){
   return valid;
 }
 function populateSchool(){
-  sv('school-name',state.school.name);
-  sv('school-symbol',state.school.symbol);
-  sv('coord-name',state.school.coord);
-  sv('coord-phone',state.school.phone);
+  if(state.school.name)sv('school-name',state.school.name);
+  if(state.school.symbol)sv('school-symbol',state.school.symbol);
+  if(state.school.coord)sv('coord-name',state.school.coord);
+  if(state.school.phone)sv('coord-phone',state.school.phone);
   const sel=document.getElementById('supervisor-name');
   if(sel&&state.school.supervisor)sel.value=state.school.supervisor;
+  // Also save school info whenever populated
+  if(state.school.name)autoSaveSchool();
+}
+
+function autoSaveSchool(){
+  if(!currentSymbol)return;
+  const localKey=STORE_KEY+'_'+currentSymbol;
+  try{
+    const saved=localStorage.getItem(localKey);
+    const obj=saved?JSON.parse(saved):{};
+    obj.school=state.school;
+    localStorage.setItem(localKey,JSON.stringify(obj));
+  }catch(e){}
 }
 function collectSchool(){
   state.school={
@@ -507,6 +545,10 @@ function collectSchool(){
     phone:v('coord-phone'),
     supervisor:document.getElementById('supervisor-name')?.value||''
   };
+}
+function saveSchoolField(field,val){
+  state.school[field]=val;
+  autoSaveSchool();
 }
 function v(id){return document.getElementById(id)?.value||'';}
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val||'';}
@@ -518,7 +560,7 @@ function setMode(m){
   document.getElementById('view-mode').style.display=m==='view'?'block':'none';
   document.getElementById('timeline-mode').style.display=m==='timeline'?'block':'none';
   if(m==='view'){collectCurrentSection();populateFilters();renderView();}
-  if(m==='timeline'){collectCurrentSection();renderTimeline();}
+  if(m==='timeline'){collectCurrentSection();renderCalendar();}
 }
 
 // TABS
@@ -624,8 +666,9 @@ function renderGradeContent(di,gi){
       // Check if this subtopic is visible in current grade
       const scope=st.scope||'all';
       const selectedGrades=st.selectedGrades||[];
+      const definedIn=st.definedInGrade!==undefined?st.definedInGrade:gi;
       const visibleHere = scope==='all' ||
-        (scope==='this' && true) ||
+        (scope==='this' && gi===definedIn) ||
         (scope==='selected' && selectedGrades.includes(gi));
       if(di!==0 && !visibleHere) return;
 
@@ -683,7 +726,8 @@ function renderGradeContent(di,gi){
           <th style="width:7%">סטטוס</th>
           <th style="width:6%">עדיפות</th>
           <th style="width:5%">עלות ₪</th>
-          <th style="width:10%">משוב</th>
+          <th style="width:9%">משוב</th>
+          <th style="width:10%">מימון/תשלום</th>
           <th style="width:3%"></th>
         </tr></thead>
         <tbody id="tbody-${di}-${gi}-s${si}">
@@ -737,7 +781,8 @@ function renderGradeContent(di,gi){
           <th style="width:7%">סטטוס</th>
           <th style="width:6%">עדיפות</th>
           <th style="width:5%">עלות ₪</th>
-          <th style="width:10%">משוב</th>
+          <th style="width:9%">משוב</th>
+          <th style="width:10%">מימון/תשלום</th>
           <th style="width:3%"></th>
         </tr></thead>
         <tbody id="tbody-${di}-${gi}-o${si}">
@@ -759,10 +804,15 @@ function renderGradeContent(di,gi){
 }
 
 function updateScope(di,gi,si,scope){
+  if(!state.domains[0].grades[gi][si])return;
   state.domains[0].grades[gi][si].scope=scope;
-  const cbDiv=document.getElementById(`grade-checkboxes-${gi}-${si}`);
+  state.domains[0].grades[gi][si].definedInGrade=gi;
+  const cbDiv=document.getElementById('grade-checkboxes-'+gi+'-'+si);
   if(cbDiv)cbDiv.style.display=scope==='selected'?'block':'none';
-  // if 'this' — add current grade to selectedGrades
+  // Disable/enable checkboxes
+  if(cbDiv){
+    cbDiv.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.disabled=scope!=='selected');
+  }
   if(scope==='this'){
     state.domains[0].grades[gi][si].selectedGrades=[gi];
   }
@@ -781,18 +831,18 @@ function toggleGradeScope(di,gi,si,gIdx,checked){
 function addActionShared(di,gi,si){
   collectCurrentSection();
   if(!state.domains[0].grades[gi][si].actions)state.domains[0].grades[gi][si].actions=[];
-  state.domains[0].grades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:''});
+  state.domains[0].grades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:'',funding:'',payStatus:''});
   renderGradeContent(di,gi);
 }
 function addActionOwn(di,gi,si){
   collectCurrentSection();
   if(!state.domains[di].ownGrades[gi][si].actions)state.domains[di].ownGrades[gi][si].actions=[];
-  state.domains[di].ownGrades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:''});
+  state.domains[di].ownGrades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:'',funding:'',payStatus:''});
   renderGradeContent(di,gi);
 }
 function addAction(di,gi,si){
   collectCurrentSection();
-  state.domains[di].grades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:''});
+  state.domains[di].grades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:'',funding:'',payStatus:''});
   renderGradeContent(di,gi);
 }
 function addOwnSubtopic(di,gi){
@@ -847,6 +897,15 @@ function actionRow(di,gi,si,ai,a){
     </td>
     <td><input type="number" min="0" value="${esc(cost)}" oninput="uaRow(this,'cost');updateCostTotal()" placeholder="₪" style="width:100%;font-size:12px;padding:3px;text-align:left"></td>
     <td><textarea rows="2" oninput="uaRow(this,'feedback')" placeholder="משוב לאחר ביצוע..." style="font-size:11px;border:1px dashed #ccc;background:#fffef0">${esc(feedback)}</textarea></td>
+    <td>
+      <input type="text" value="${esc(a.funding||'')}" oninput="uaRow(this,'funding')" placeholder="מקור מימון..." style="font-size:11px;width:100%;margin-bottom:3px">
+      <select onchange="uaRow(this,'payStatus')" style="font-size:10px;width:100%;padding:2px">
+        <option value="" ${!a.payStatus?'selected':''}>סטטוס תשלום</option>
+        <option value="pending" ${a.payStatus==='pending'?'selected':''}>⏳ טרם שולם</option>
+        <option value="paid" ${a.payStatus==='paid'?'selected':''}>✅ שולם</option>
+        <option value="invoice" ${a.payStatus==='invoice'?'selected':''}>🧾 הוגשה חשבונית</option>
+      </select>
+    </td>
     <td><button class="del-row" onclick="deleteActionRow(this)">✕</button></td>
   </tr>`;
 }
@@ -977,7 +1036,7 @@ function collectCurrentSection(){
       if(!actionArr[ai])return;
       const textInputs=[...row.querySelectorAll('textarea,input[type="text"],input[type="date"],input[type="number"]')];
       const selects=row.querySelectorAll('select');
-      const fields=['name','resp','part','outcome','measure','date','cost','feedback'];
+      const fields=['name','resp','part','outcome','measure','date','cost','feedback','funding'];
       textInputs.forEach((el,idx)=>{if(fields[idx]!==undefined)actionArr[ai][fields[idx]]=el.value;});
       if(selects[0])actionArr[ai].status=selects[0].value;
       if(selects[1])actionArr[ai].priority=selects[1].value;
@@ -1056,393 +1115,89 @@ function renderView(){
 }
 
 
-const MONTH_MAP={
-  'ספט':0,'אוקט':1,'נוב':2,'דצמ':3,'ינו':4,'פבר':5,
-  'מרצ':6,'אפר':7,'מאי':8,'יוני':9,'יולי':10,'אוג':11,
-  'ספטמבר':0,'אוקטובר':1,'נובמבר':2,'דצמבר':3,'ינואר':4,'פברואר':5,
-  'מרץ':6,'אפריל':7,'יוני':9,'יולי':10,'אוגוסט':11
-};
-const MONTHS_HE=['ספט׳','אוקט׳','נוב׳','דצמ׳','ינו׳','פבר׳','מרץ','אפר׳','מאי','יוני','יולי','אוג׳'];
+// CALENDAR
+let calYear=new Date().getFullYear();
+let calMonth=new Date().getMonth();
 
-function getMonthIdx(dateStr){
-  if(!dateStr)return -1;
-  // Handle ISO date format: 2025-09-01 or 2025-09
-  const isoMatch=dateStr.match(/^\d{4}-(\d{2})/);
-  if(isoMatch){
-    const month=parseInt(isoMatch[1])-1; // 0-based
-    // School year: Sep=0, Oct=1, ... Aug=11
-    return month>=8 ? month-8 : month+4;
-  }
-  // Handle text fallback
-  const d=dateStr.trim().toLowerCase();
-  for(const [k,v] of Object.entries(MONTH_MAP)){if(d.includes(k.toLowerCase()))return v;}
-  return -1;
-}
+function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();}
 
-function renderTimeline(){
-  collectCurrentSection();
-  const tc=document.getElementById('timeline-content');
-  // Build rows: one per domain (summarized)
-  let rows=[];
-  DOMAINS.forEach((dom,di)=>{
-    GRADES.forEach((g,gi)=>{
+function getAllActions(){
+  const actions=[];
+  DOMAINS.forEach((d,di)=>{
+    GRADES.forEach((_,gi)=>{
       (state.domains[di].grades[gi]||[]).forEach(st=>{
-        (st.actions||[]).forEach(a=>{
-          if(!a.name)return;
-          const mi=getMonthIdx(a.date);
-          rows.push({label:`${dom.name} · ${g}`,name:a.name,month:mi,color:dom.color,status:a.status||'planned',priority:a.priority||'med'});
-        });
+        (st.actions||[]).forEach(a=>{if(a.name&&a.date)actions.push({...a,domain:d.name,color:d.color,grade:GRADES[gi],subtopic:st.name||''});});
+      });
+      (state.domains[di].ownGrades?.[gi]||[]).forEach(st=>{
+        (st.actions||[]).forEach(a=>{if(a.name&&a.date)actions.push({...a,domain:d.name,color:d.color,grade:GRADES[gi],subtopic:st.name||''});});
       });
     });
   });
+  return actions;
+}
 
-  if(!rows.length){tc.innerHTML='<div style="color:#aaa;text-align:center;padding:20px">אין פעולות עם תאריך מוגדר עדיין.<br>מלא/י מועד משוער בפעולות כדי לראות אותן כאן.</div>';return;}
-
-  // Group by domain+grade label
-  const groups={};
-  rows.forEach(r=>{
-    if(!groups[r.label])groups[r.label]={color:r.color,items:[]};
-    groups[r.label].items.push(r);
-  });
-
-  // Render grid
-  let html=`<div class="timeline-grid">
-    <div class="tl-header">תחום / שכבה</div>
-    ${MONTHS_HE.map(m=>`<div class="tl-header">${m}</div>`).join('')}`;
-
-  Object.entries(groups).forEach(([label,{color,items}])=>{
-    const cells=Array(12).fill('');
-    items.forEach(item=>{
-      if(item.month>=0&&item.month<12){
-        const statusIcon={planned:'📋',active:'⚡',done:'✅'}[item.status]||'📋';
-        cells[item.month]+= `<div class="tl-bar" style="background:${color}" title="${item.name}">${statusIcon} ${item.name}</div>`;
-      }
+function renderCalendar(){
+  const HE_MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const HE_DAYS=['א','ב','ג','ד','ה','ו','ש'];
+  const el=document.getElementById('cal-title');
+  if(el)el.textContent=HE_MONTHS[calMonth]+' '+calYear;
+  const grid=document.getElementById('cal-grid');
+  if(!grid)return;
+  grid.innerHTML='';
+  HE_DAYS.forEach(d=>{const h=document.createElement('div');h.className='cal-header-cell';h.textContent=d;grid.appendChild(h);});
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+  const actions=getAllActions();
+  const today=new Date();
+  for(let i=0;i<firstDay;i++){const c=document.createElement('div');c.className='cal-cell other-month';c.innerHTML='<div class="cal-day-num">'+(daysInPrev-firstDay+i+1)+'</div>';grid.appendChild(c);}
+  for(let d=1;d<=daysInMonth;d++){
+    const cell=document.createElement('div');
+    const isToday=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
+    cell.className='cal-cell'+(isToday?' today':'');
+    cell.innerHTML='<div class="cal-day-num">'+d+'</div>';
+    const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    actions.filter(a=>a.date===dateStr).forEach(a=>{
+      const ev=document.createElement('div');
+      ev.className='cal-event';ev.style.background=a.color;ev.textContent=a.name;ev.title=a.name;
+      ev.onclick=()=>showCalPopup(a);
+      cell.appendChild(ev);
     });
-    // Items without month — show count
-    const noDate=items.filter(i=>i.month<0).length;
-    html+=`<div class="tl-label" style="border-right:3px solid ${color}">${label}${noDate?` <span style="font-size:10px;color:#aaa">(+${noDate} ללא תאריך)</span>`:''}</div>`;
-    html+=cells.map(c=>`<div class="tl-cell">${c||''}</div>`).join('');
-  });
-
-  html+='</div>';
-
-  // Legend
-  html+=`<div style="margin-top:10px;display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap">
-    <span>מקרא סטטוס:</span>
-    <span>📋 מתוכנן</span><span>⚡ בביצוע</span><span>✅ הושלם</span>
-  </div>`;
-  tc.innerHTML=html;
-}
-
-// EMAIL PDF TO SUPERVISOR
-function emailPDFToSupervisor(){
-  collectCurrentSection();collectSchool();
-  if(!validateAllSchoolFields())return;
-  const sn=state.school.name||'בית הספר';
-  const coord=state.school.coord||'';
-  const supervisor=state.school.supervisor||'';
-  const subject=encodeURIComponent(`תכנית עבודה תשפ"ז — ${sn}`);
-  const body=encodeURIComponent(
-    `שלום ${supervisor},\n\nמצורפת תכנית העבודה השנתית של ${sn} לשנה"ל תשפ"ז.\n\nרכז/ת: ${coord}\n\nלצפייה בתכנית יש להדפיס את ה-PDF שנפתח.\n\nבברכה,\n${coord}`
-  );
-  exportMobilePDF();
-  showToast('📧 שמרו את ה-PDF ← פתחו מייל ← צרפו');
-  setTimeout(()=>{window.location.href=`mailto:?subject=${subject}&body=${body}`;},1500);
-}
-
-// MOBILE PDF
-function exportMobilePDF(){
-  collectCurrentSection();collectSchool();
-  if(!validateAllSchoolFields())return;
-  const sn=state.school.name||'בית הספר';
-  const coord=state.school.coord||'';
-  const supervisor=state.school.supervisor||'';
-  const stLabel={'planned':'📋 מתוכנן','active':'⚡ בביצוע','done':'✅ הושלם'};
-  const prLabel={'high':'🔴 גבוהה','med':'🟡 בינונית','low':'🟢 נמוכה'};
-
-  let html=`<html dir="rtl"><head><meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>תכנית עבודה — ${sn}</title>
-  <style>
-    body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;color:#222;margin:0;padding:12px;background:#f4f6f9;direction:rtl}
-    h1{font-size:17px;color:#1a3a5c;margin-bottom:3px}
-    .meta{font-size:12px;color:#666;margin-bottom:16px;line-height:1.8}
-    .domain-block{background:#fff;border-radius:10px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-    .domain-head{padding:10px 14px;font-size:14px;font-weight:700;color:#fff}
-    .goals-row{padding:8px 14px;font-size:12px;color:#555;background:#f8f9fa;border-bottom:1px solid #eee;line-height:1.6}
-    .grade-head{padding:6px 14px;font-size:12px;font-weight:700;color:#1a3a5c;background:#edf2f7;border-bottom:1px solid #dde}
-    .subtopic-head{padding:5px 14px;font-size:12px;font-weight:600;color:#555;background:#f4f7fb;border-bottom:1px solid #eee}
-    .action-card{padding:10px 14px;border-bottom:1px solid #f0f0f0}
-    .action-name{font-size:13px;font-weight:600;color:#222;margin-bottom:5px}
-    .action-row{font-size:12px;color:#666;margin-bottom:2px;display:flex;gap:6px}
-    .action-row span{color:#333}
-    .tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-left:4px}
-    .s-planned{background:#d6eaf8;color:#1a5276}
-    .s-active{background:#fef9e7;color:#7d6608}
-    .s-done{background:#eafaf1;color:#1a6335}
-    .p-high{background:#fdf0f0;color:#922b21}
-    .p-med{background:#fef9e7;color:#7d6608}
-    .p-low{background:#f4f7fb;color:#555}
-    @media print{body{background:#fff;padding:0}.domain-block{box-shadow:none;border:1px solid #ddd}}
-  </style></head><body>
-  <h1>תכנית עבודה שנתית — חינוך חברתי תשפ"ז</h1>
-  <div class="meta">
-    🏫 <strong>${sn}</strong><br>
-    👤 <strong>רכז/ת:</strong> ${coord}<br>
-    ${supervisor?`🧑‍🏫 <strong>מנחה:</strong> ${supervisor}<br>`:''}
-    📅 <strong>הופק:</strong> ${new Date().toLocaleDateString('he-IL')}
-  </div>`;
-
-  DOMAINS.forEach((d,di)=>{
-    const dom=state.domains[di];
-    const goals=[...(dom.selectedGoals||[])];if(dom.customGoals?.trim())goals.push(dom.customGoals.trim());
-    const outcomes=[...(dom.selectedOutcomes||[])];if(dom.customOutcomes?.trim())outcomes.push(dom.customOutcomes.trim());
-    let hasContent=false;
-    GRADES.forEach((_,gi)=>{if((dom.grades[gi]||[]).some(st=>st.actions?.some(a=>a.name)))hasContent=true;});
-    if(!hasContent&&!goals.length)return;
-
-    html+=`<div class="domain-block">
-      <div class="domain-head" style="background:${d.color}">${d.name}</div>`;
-    if(goals.length)html+=`<div class="goals-row">🎯 <strong>מטרות:</strong> ${goals.map((g,i)=>`${i+1}. ${g}`).join(' • ')}</div>`;
-    if(outcomes.length)html+=`<div class="goals-row">📊 <strong>מדדים:</strong> ${outcomes.map((o,i)=>`${i+1}. ${o}`).join(' • ')}</div>`;
-
-    GRADES.forEach((g,gi)=>{
-      const subs=(dom.grades[gi]||[]).filter(st=>st.actions?.some(a=>a.name));
-      if(!subs.length)return;
-      html+=`<div class="grade-head">שכבה ${g}</div>`;
-      subs.forEach(st=>{
-        if(st.name)html+=`<div class="subtopic-head">📌 ${st.name}</div>`;
-        st.actions.filter(a=>a.name).forEach(a=>{
-          const sc={'planned':'s-planned','active':'s-active','done':'s-done'}[a.status||'planned'];
-          const pc={'high':'p-high','med':'p-med','low':'p-low'}[a.priority||'med'];
-          html+=`<div class="action-card">
-            <div class="action-name">${a.name}</div>
-            ${a.resp?`<div class="action-row">👤 <span>${a.resp}</span></div>`:''}
-            ${a.date?`<div class="action-row">📅 <span>${a.date}</span></div>`:''}
-            ${a.status?`<span class="tag ${sc}">${stLabel[a.status]||''}</span><span class="tag ${pc}">${prLabel[a.priority]||''}</span>`:''}
-            ${a.outcome?`<div class="action-row" style="margin-top:5px">📊 <span>${a.outcome}</span></div>`:''}
-          </div>`;
-        });
-      });
-    });
-    html+=`</div>`;
-  });
-
-  html+=`</body></html>`;
-  // Use Blob URL instead of window.open to avoid popup blocker
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.target='_blank';a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),5000);
-}
-
-// PDF EXPORT
-function exportPDF(){
-  collectCurrentSection();collectSchool();
-  if(!validateAllSchoolFields())return;
-  const sn=state.school.name||'בית הספר';
-  const coord=state.school.coord||'';
-  const sym=state.school.symbol||'';
-  let html=`<html dir="rtl"><head><meta charset="UTF-8"><title>תכנית עבודה תשפ"ז — ${sn}</title>
-  <style>
-    body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#222;margin:20px}
-    h1{font-size:16px;color:#1a3a5c;margin-bottom:4px}
-    h2{font-size:13px;color:#1a5276;margin:14px 0 6px;border-bottom:2px solid #1a5276;padding-bottom:3px}
-    h3{font-size:12px;color:#555;margin:8px 0 4px}
-    .meta{font-size:11px;color:#666;margin-bottom:14px}
-    table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:10px}
-    th{background:#1a3a5c;color:#fff;padding:4px 6px;text-align:right}
-    td{border:1px solid #ddd;padding:4px 6px;vertical-align:top}
-    .goals{font-size:10px;color:#444;margin:4px 0 8px;line-height:1.6}
-    .page-break{page-break-before:always}
-    .status-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px}
-    .s-p{background:#d6eaf8;color:#1a5276}.s-a{background:#fef9e7;color:#7d6608}.s-d{background:#eafaf1;color:#1a6335}
-    .pri-h{color:#922b21;font-weight:700}.pri-m{color:#7d6608}.pri-l{color:#555}
-  </style></head><body>
-  <h1>תכנית עבודה שנתית — חינוך חברתי תשפ"ז</h1>
-  <div class="meta">
-    <strong>בית הספר:</strong> ${sn} &nbsp;|&nbsp;
-    <strong>סמל מוסד:</strong> ${sym} &nbsp;|&nbsp;
-    <strong>רכז/ת חברתי:</strong> ${coord} &nbsp;|&nbsp;
-    <strong>תאריך הפקה:</strong> ${new Date().toLocaleDateString('he-IL')}
-  </div>`;
-
-  DOMAINS.forEach((d,di)=>{
-    const dom=state.domains[di];
-    const goals=[...(dom.selectedGoals||[])];if(dom.customGoals?.trim())goals.push(dom.customGoals.trim());
-    const outcomes=[...(dom.selectedOutcomes||[])];if(dom.customOutcomes?.trim())outcomes.push(dom.customOutcomes.trim());
-    let hasContent=goals.length||outcomes.length;
-    GRADES.forEach((_,gi)=>{if((dom.grades[gi]||[]).some(st=>st.actions?.some(a=>a.name)))hasContent=true;});
-    if(!hasContent)return;
-
-    html+=`<h2>${d.name}</h2>`;
-    if(goals.length)html+=`<div class="goals"><strong>מטרות:</strong> ${goals.map((g,i)=>`${i+1}. ${g}`).join(' | ')}</div>`;
-    if(outcomes.length)html+=`<div class="goals"><strong>מדדי הצלחה:</strong> ${outcomes.map((o,i)=>`${i+1}. ${o}`).join(' | ')}</div>`;
-
-    GRADES.forEach((g,gi)=>{
-      const subs=(dom.grades[gi]||[]).filter(st=>st.actions?.some(a=>a.name));
-      if(!subs.length)return;
-      html+=`<h3>שכבה ${g}</h3>`;
-      subs.forEach(st=>{
-        if(st.name)html+=`<div style="font-size:10px;font-weight:600;color:#1a5276;margin-bottom:3px">תת-נושא: ${st.name}</div>`;
-        html+=`<table><thead><tr><th style="width:24%">פעולה</th><th style="width:12%">אחראי</th><th style="width:18%">שותפים</th><th style="width:24%">תוצאה מצופה</th><th style="width:9%">מועד</th><th style="width:8%">סטטוס</th><th style="width:5%">עדיפות</th></tr></thead><tbody>`;
-        st.actions.filter(a=>a.name).forEach(a=>{
-          const sc={'planned':'s-p','active':'s-a','done':'s-d'}[a.status||'planned'];
-          const sl={'planned':'מתוכנן','active':'בביצוע','done':'הושלם'}[a.status||'planned'];
-          const pc={'high':'pri-h','med':'pri-m','low':'pri-l'}[a.priority||'med'];
-          const pl={'high':'גבוהה','med':'בינונית','low':'נמוכה'}[a.priority||'med'];
-          html+=`<tr><td>${a.name}</td><td>${a.resp||''}</td><td>${a.part||''}</td><td>${a.outcome||''}</td><td>${a.date||''}</td><td><span class="status-badge ${sc}">${sl}</span></td><td class="${pc}">${pl}</td></tr>`;
-        });
-        html+=`</tbody></table>`;
-      });
-    });
-  });
-
-  html+='</body></html>';
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.target='_blank';a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),5000);
-}
-
-
-
-// SEND TO SUPERVISOR via Google Forms
-function exportForSupervisor(){
-  collectCurrentSection();collectSchool();
-  if(!validateAllSchoolFields())return;
-  const out={exportDate:new Date().toLocaleDateString('he-IL'),year:'תשפ"ז',school:state.school,domains:{}};
-  DOMAINS.forEach((d,di)=>{
-    const dom=state.domains[di];
-    const goals=[...(dom.selectedGoals||[])];if(dom.customGoals?.trim())goals.push(dom.customGoals.trim());
-    const outcomes=[...(dom.selectedOutcomes||[])];if(dom.customOutcomes?.trim())outcomes.push(dom.customOutcomes.trim());
-    out.domains[d.name]={goals,outcomes,grades:{}};
-    GRADES.forEach((g,gi)=>{out.domains[d.name].grades[g]=dom.grades[gi]||[];});
-  });
-  const payload=JSON.stringify(out);
-  // Send to supervisor via Apps Script
-  const btn=document.querySelector('.btn-export');
-  const origText=btn.innerHTML;
-  btn.innerHTML='⏳ שולח...';btn.disabled=true;
-  fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:payload})
-    .then(()=>{
-      btn.innerHTML='✅ נשלח!';
-      showToast(`✓ התכנית של ${state.school.name} נשלחה למנחה בהצלחה!`);
-      setTimeout(()=>{btn.innerHTML=origText;btn.disabled=false;},3000);
-    })
-    .catch(()=>{
-      btn.innerHTML=origText;btn.disabled=false;
-      showToast('שגיאה בשליחה — נסו שוב');
-    });
-}
-
-function showMeasureChips(el,di){
-  const tr=el.closest('tr');
-  if(!tr)return;
-  const siAttr=tr.dataset.si;
-  const ai=tr.dataset.ai;
-  const key=`${di}-${siAttr}-${ai}`;
-  const popupId=`mcp-${key}`;
-  const chipsId=`mcp-chips-${key}`;
-  // Close all other popups
-  document.querySelectorAll('.measure-chips-popup').forEach(p=>{if(p.id!==popupId)p.style.display='none';});
-  const popup=document.getElementById(popupId);
-  if(!popup)return;
-  // Populate chips if empty
-  const chipsDiv=document.getElementById(chipsId);
-  if(chipsDiv&&chipsDiv.children.length===0){
-    (SUGGESTED_MEASURES[di]||[]).forEach(m=>{
-      const chip=document.createElement('div');
-      chip.textContent=m;
-      chip.style.cssText='cursor:pointer;border:1px solid var(--color-border-secondary);border-radius:12px;padding:3px 8px;font-size:11px;background:var(--color-background-secondary);color:var(--color-text-primary);margin:2px';
-      chip.onclick=()=>{
-        const ta=popup.previousElementSibling;
-        if(ta){ta.value=ta.value?(ta.value+'\n'+m):m;uaRow(ta,'measure');}
-        popup.style.display='none';
-      };
-      chipsDiv.appendChild(chip);
-    });
+    grid.appendChild(cell);
   }
-  popup.style.display=popup.style.display==='none'?'block':'none';
+  const totalCells=firstDay+daysInMonth;
+  const remaining=(7-totalCells%7)%7;
+  for(let i=1;i<=remaining;i++){const c=document.createElement('div');c.className='cal-cell other-month';c.innerHTML='<div class="cal-day-num">'+i+'</div>';grid.appendChild(c);}
 }
 
-function closeMeasurePopup(key){
-  const popup=document.getElementById('mcp-'+key);
-  if(popup)popup.style.display='none';
+function showCalPopup(a){
+  const stL={'planned':'📋 מתוכנן','active':'⚡ בביצוע','done':'✅ הושלם'};
+  const prL={'high':'🔴 גבוהה','med':'🟡 בינונית','low':'🟢 נמוכה'};
+  const pyL={'pending':'⏳ טרם שולם','paid':'✅ שולם','invoice':'🧾 הוגשה חשבונית'};
+  const t=document.getElementById('cal-popup-title');
+  const b=document.getElementById('cal-popup-body');
+  if(!t||!b)return;
+  t.textContent=a.name;
+  b.innerHTML=
+    '<div class="cal-popup-row"><span class="cal-popup-label">תחום:</span><span class="cal-popup-val" style="color:'+a.color+'">'+a.domain+'</span></div>'+
+    '<div class="cal-popup-row"><span class="cal-popup-label">שכבה:</span><span class="cal-popup-val">'+a.grade+'</span></div>'+
+    (a.subtopic?'<div class="cal-popup-row"><span class="cal-popup-label">תת-נושא:</span><span class="cal-popup-val">'+a.subtopic+'</span></div>':'')+
+    '<div class="cal-popup-row"><span class="cal-popup-label">תאריך:</span><span class="cal-popup-val">'+a.date+'</span></div>'+
+    (a.resp?'<div class="cal-popup-row"><span class="cal-popup-label">אחראי:</span><span class="cal-popup-val">'+a.resp+'</span></div>':'')+
+    (a.outcome?'<div class="cal-popup-row"><span class="cal-popup-label">תוצאה:</span><span class="cal-popup-val">'+a.outcome+'</span></div>':'')+
+    (a.cost?'<div class="cal-popup-row"><span class="cal-popup-label">עלות:</span><span class="cal-popup-val">₪'+a.cost+'</span></div>':'')+
+    (a.funding?'<div class="cal-popup-row"><span class="cal-popup-label">מימון:</span><span class="cal-popup-val">'+a.funding+'</span></div>':'')+
+    (a.status?'<div class="cal-popup-row"><span class="cal-popup-label">סטטוס:</span><span class="cal-popup-val">'+(stL[a.status]||a.status)+'</span></div>':'')+
+    (a.payStatus?'<div class="cal-popup-row"><span class="cal-popup-label">תשלום:</span><span class="cal-popup-val">'+(pyL[a.payStatus]||a.payStatus)+'</span></div>':'')+
+    (a.feedback?'<div class="cal-popup-row" style="margin-top:8px;border-top:1px solid #eee;padding-top:8px"><span class="cal-popup-label">משוב:</span><span class="cal-popup-val" style="color:#7d6608">'+a.feedback+'</span></div>':'');
+  document.getElementById('cal-popup-overlay').style.display='block';
+  document.getElementById('cal-popup').style.display='block';
 }
 
-function selectMeasure(chipEl,key){
-  // legacy — kept for compatibility
-  const popup=document.getElementById('mcp-'+key);
-  if(popup){
-    const ta=popup.previousElementSibling;
-    if(ta){ta.value=ta.value?(ta.value+'\n'+chipEl.textContent):chipEl.textContent;uaRow(ta,'measure');}
-    popup.style.display='none';
-  }
+function closeCalPopup(){
+  document.getElementById('cal-popup-overlay').style.display='none';
+  document.getElementById('cal-popup').style.display='none';
 }
 
-// Close measure popups on click outside
-document.addEventListener('click',e=>{
-  if(!e.target.closest('.measure-chips-popup')&&!e.target.matches('textarea[placeholder*="מדד"]')){
-    document.querySelectorAll('.measure-chips-popup').forEach(p=>p.style.display='none');
-  }
-});
 
-function clearAllData(){
-  const pw=prompt('הזינו סיסמת מנחה למחיקת כל הנתונים:');
-  if(pw===null)return;
-  if(pw!=='211264'){
-    alert('סיסמה שגויה — הנתונים לא נמחקו');
-    return;
-  }
-  if(!confirm('האם את/ה בטוח/ה? פעולה זו תמחק את כל נתוני התכנית ולא ניתן לשחזר אותם.')){return;}
-  // Clear all keys related to this tool
-  const keysToRemove=[];
-  for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(k&&k.startsWith('tspz_'))keysToRemove.push(k);
-  }
-  keysToRemove.forEach(k=>localStorage.removeItem(k));
-  // Reset state
-  state={school:{},domains:{}};
-  initState();
-  showToast('✓ כל הנתונים נמחקו בהצלחה');
-  setTimeout(()=>{
-    populateSchool();buildTabs();renderSection();
-  },500);
-}
-
-function showToast(msg){
-  const t=document.getElementById('toast-el');
-  t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3000);
-}
-
-function autoSave(){
-  try{
-    collectCurrentSection();collectSchool();
-    localStorage.setItem(STORE_KEY,JSON.stringify(state));
-    const ind=document.getElementById('autosave-indicator');
-    const now=new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-    if(ind){ind.textContent=`טיוטה נשמרה ${now}`;setTimeout(()=>{if(ind)ind.textContent='';},4000);}
-  }catch(e){}
-}
-
-// Autosave every 60 seconds
-let _autoSaveTimer=setInterval(autoSave,60000);
-
-// Autosave on page unload
-window.addEventListener('beforeunload',()=>{try{collectCurrentSection();collectSchool();localStorage.setItem(STORE_KEY,JSON.stringify(state));}catch(e){}});
-
-
-// INIT — check if code exists, show appropriate tab
-// INIT
-document.getElementById('lock-screen').style.display='flex';
-document.getElementById('main-screen').style.display='none';
-setTimeout(()=>document.getElementById('code-input')?.focus(),200);
-</script>  <div style="text-align:center;padding:12px;font-size:11px;color:#aaa;border-top:1px solid #eee;margin-top:12px;background:#fafafa">
-    פותח ע"י <strong style="color:#777">זהר ניר לוי</strong> וצוות מנחי מינהל חברה ונוער | מינהל לחינוך התיישבותי | תשפ"ז
-  </div>
-</body>
-</html>
