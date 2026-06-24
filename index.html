@@ -405,15 +405,18 @@ async function loadData(){
   const localKey=STORE_KEY+'_'+currentSymbol;
   if(currentSymbol){
     try{
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),5000); // 5 sec timeout
       const resp=await fetch(APPS_SCRIPT_URL,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'load',symbol:currentSymbol})
+        body:JSON.stringify({action:'load',symbol:currentSymbol}),
+        signal:controller.signal
       });
+      clearTimeout(timeout);
       const text=await resp.text();
       if(text&&text!=='NOT_FOUND'&&text!=='ERROR'&&text!=='{}'){
         const data=JSON.parse(text);
-        // Merge domains from cloud — each domain independently
         initState();
         if(data.school)state.school=data.school;
         DOMAINS.forEach((_,di)=>{
@@ -427,7 +430,6 @@ async function loadData(){
             state.domains[di].customOutcomes=data[key].customOutcomes||'';
           }
         });
-        // Handle legacy full save
         if(data.full){
           const full=data.full;
           if(full.school&&!data.school)state.school=full.school;
@@ -437,7 +439,9 @@ async function loadData(){
         try{localStorage.setItem(localKey,JSON.stringify(state));}catch(e){}
         return;
       }
-    }catch(e){}
+    }catch(e){
+      // Timeout or network error — fall through to local
+    }
   }
   // Fallback to local
   try{const r=localStorage.getItem(localKey);if(r){state=JSON.parse(r);initState();return;}}catch(e){}
