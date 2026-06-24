@@ -210,10 +210,7 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
       <span id="autosave-indicator" style="font-size:11px;opacity:.7;align-self:center"></span>
       <span id="cost-total" style="font-size:12px;color:#fff;opacity:.85;align-self:center;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:6px"></span>
       <button class="btn btn-export" onclick="exportForSupervisor()">📤 שלח למנחה</button>
-      <button class="btn" style="background:#6c3483;color:#fff" onclick="exportPDF()">🖨 PDF להנהלה</button>
-      <button class="btn" style="background:#e67e22;color:#fff" onclick="exportMobilePDF()">📱 PDF לנייד</button>
-      <button class="btn" style="background:#117864;color:#fff" onclick="emailPDFToSupervisor()">📧 שלח PDF למנחה</button>
-      <button class="btn" style="background:#1a5276;color:#fff" onclick="emailPDFToSelf()">📧 שלח PDF לעצמי</button>
+      <button class="btn" style="background:#6c3483;color:#fff" onclick="exportPDF()">📄 ייצא תכנית PDF</button>
       <button class="btn btn-lock" onclick="lockApp()">🔒 נעל</button>
       <button class="btn" style="background:#922b21;color:#fff" onclick="clearAllData()">🗑 נקה הכל</button>
     </div>
@@ -364,6 +361,7 @@ function initState(){
     if(!state.domains[di].selectedGoals)state.domains[di].selectedGoals=[];
     if(!state.domains[di].selectedOutcomes)state.domains[di].selectedOutcomes=[];
     if(!state.domains[di].ownGrades)state.domains[di].ownGrades={};
+    if(di===0&&!state.domains[0].sharedSubtopics)state.domains[0].sharedSubtopics=[];
     GRADES.forEach((_,gi)=>{
       if(!state.domains[di].grades[gi])state.domains[di].grades[gi]=[];
       if(!state.domains[di].ownGrades[gi])state.domains[di].ownGrades[gi]=[];
@@ -391,7 +389,8 @@ function saveData(){
       selectedGoals:state.domains[di].selectedGoals,
       customGoals:state.domains[di].customGoals,
       selectedOutcomes:state.domains[di].selectedOutcomes,
-      customOutcomes:state.domains[di].customOutcomes
+      customOutcomes:state.domains[di].customOutcomes,
+      sharedSubtopics:di===0?state.domains[0].sharedSubtopics:undefined
     };
     return fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'save_domain',symbol:currentSymbol,domainIdx:di,domainData})});
@@ -428,6 +427,7 @@ async function loadData(){
             state.domains[di].customGoals=data[key].customGoals||'';
             state.domains[di].selectedOutcomes=data[key].selectedOutcomes||[];
             state.domains[di].customOutcomes=data[key].customOutcomes||'';
+            if(di===0&&data[key].sharedSubtopics)state.domains[0].sharedSubtopics=data[key].sharedSubtopics;
           }
         });
         if(data.full){
@@ -503,8 +503,7 @@ function openMain(){
 
 // SCHOOL
 function validateSchoolField(input,errId){
-  const empty=!input.value.trim();
-  input.classList.toggle('invalid',empty);
+  const empty=!input?.value?.trim();
   const errEl=document.getElementById(errId);
   if(errEl)errEl.style.display=empty?'block':'none';
   return !empty;
@@ -515,21 +514,214 @@ function validateAllSchoolFields(){
     {id:'school-name',err:'school-name-err'},
     {id:'school-symbol',err:'school-symbol-err'},
     {id:'coord-name',err:'coord-name-err'},
-    {id:'coord-phone',err:'coord-phone-err'},
-    {id:'supervisor-name',err:'supervisor-err'}
+    {id:'coord-phone',err:'coord-phone-err'}
   ];
   let valid=true;
   fields.forEach(f=>{
     const el=document.getElementById(f.id);
-    if(!validateSchoolField(el,f.err))valid=false;
+    const errEl=document.getElementById(f.err);
+    if(el&&!el.value.trim()){
+      if(errEl)errEl.style.display='block';
+      valid=false;
+    }else{
+      if(errEl)errEl.style.display='none';
+    }
   });
-  const notice=document.getElementById('school-required-notice');
-  if(notice)notice.style.display=valid?'none':'block';
-  if(!valid){
-    document.getElementById('school-name').scrollIntoView({behavior:'smooth',block:'center'});
-  }
+  if(!valid)alert('נא למלא את כל שדות החובה בפרטי בית הספר');
   return valid;
 }
+
+function clearAllData(){
+  const pw=prompt('הזינו סיסמת מנחה למחיקת כל הנתונים:');
+  if(pw===null)return;
+  if(pw!=='211264'){alert('סיסמה שגויה — הנתונים לא נמחקו');return;}
+  if(!confirm('האם את/ה בטוח/ה? פעולה זו תמחק את כל נתוני התכנית ולא ניתן לשחזר אותם.'))return;
+  const keysToRemove=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith('tspz_'))keysToRemove.push(k);
+  }
+  keysToRemove.forEach(k=>localStorage.removeItem(k));
+  state={school:{},domains:{}};
+  initState();
+  showToast('✓ כל הנתונים נמחקו בהצלחה');
+  setTimeout(()=>{populateSchool();buildTabs();renderSection();},500);
+}
+
+function buildPDFContent(){
+  collectCurrentSection();collectSchool();
+  const s=state.school;
+  const now=new Date().toLocaleDateString('he-IL');
+  let html=`<!DOCTYPE html><html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>תכנית עבודה תשפ"ז — ${esc(s.name||'')}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Arial',sans-serif;direction:rtl;background:#fff;color:#222;font-size:12px;padding:20px}
+  .page-header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1a5276;padding-bottom:10px;margin-bottom:16px}
+  .org-name{font-size:18px;font-weight:700;color:#1a5276}
+  .doc-title{font-size:14px;color:#555;margin-top:3px}
+  .school-bar{background:#1a5276;color:#fff;padding:8px 14px;border-radius:6px;margin-bottom:16px;font-size:12px;display:flex;gap:20px;flex-wrap:wrap}
+  .school-bar span{white-space:nowrap}
+  .domain-section{margin-bottom:20px;page-break-inside:avoid}
+  .domain-title{background:#1a5276;color:#fff;padding:6px 12px;border-radius:5px 5px 0 0;font-size:13px;font-weight:700}
+  .grade-block{margin-bottom:8px;border:1px solid #ddd;border-radius:0 0 5px 5px}
+  .grade-title{background:#eaf4fb;padding:5px 10px;font-size:12px;font-weight:600;color:#1a3a5c;border-bottom:1px solid #ddd}
+  .subtopic-title{padding:4px 10px;font-size:11px;color:#555;background:#f9f9f9;border-bottom:1px solid #eee;font-style:italic}
+  table{width:100%;border-collapse:collapse}
+  th{background:#2980b9;color:#fff;padding:4px 6px;font-size:11px;text-align:right;font-weight:600}
+  td{border:1px solid #ddd;padding:4px 6px;font-size:11px;vertical-align:top}
+  tr:nth-child(even) td{background:#f7fbff}
+  .cost-summary{background:#eaf4fb;border:1px solid #a9cce3;border-radius:6px;padding:8px 14px;margin-top:16px;font-size:13px;font-weight:600;color:#1a3a5c;text-align:left}
+  .footer{margin-top:20px;padding-top:8px;border-top:1px solid #eee;font-size:10px;color:#aaa;text-align:center}
+  @media print{
+    body{padding:10px}
+    .no-print{display:none}
+    .domain-section{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="no-print" style="background:#1a5276;color:#fff;padding:10px 16px;margin:-20px -20px 20px;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+  <span>📄 תכנית מוכנה — לחצו Ctrl+P (או ⌘+P) להדפסה / שמירה כ-PDF</span>
+  <button onclick="window.print()" style="background:#fff;color:#1a5276;border:none;border-radius:4px;padding:5px 12px;cursor:pointer;font-weight:600">🖨 הדפס / PDF</button>
+</div>
+<div class="page-header">
+  <div>
+    <div class="org-name">מינהל לחינוך התיישבותי</div>
+    <div class="doc-title">תכנית עבודה שנתית — חינוך חברתי תשפ"ז</div>
+  </div>
+  <div style="font-size:11px;color:#888">הופק: ${now}</div>
+</div>
+<div class="school-bar">
+  <span>🏫 <strong>בית הספר:</strong> ${esc(s.name||'')}</span>
+  <span>🔢 <strong>סמל:</strong> ${esc(s.symbol||'')}</span>
+  <span>👤 <strong>רכז/ת:</strong> ${esc(s.coord||'')}</span>
+  <span>📞 ${esc(s.phone||'')}</span>
+  <span>🧭 <strong>מנחה:</strong> ${esc(s.supervisor||'')}</span>
+</div>`;
+
+  let totalCost=0;
+
+  DOMAINS.forEach((d,di)=>{
+    const dom=state.domains[di];
+    const shared=state.domains[0].sharedSubtopics||[];
+    let domainHTML='';
+
+    GRADES.forEach((g,gi)=>{
+      let gradeHTML='';
+
+      // Shared subtopics
+      shared.forEach((st,si)=>{
+        const scope=st.scope||'all';
+        const vis=scope==='all'||(scope==='selected'&&(st.selectedGrades||[]).includes(gi));
+        if(!vis)return;
+        const actions=((st.gradeActions&&st.gradeActions[gi])||[]).filter(a=>a.name);
+        if(!actions.length)return;
+        gradeHTML+=`<div class="subtopic-title">📌 ${esc(st.name||'')}</div>
+        <table><tr><th style="width:22%">פעולה</th><th style="width:10%">אחראי</th><th style="width:14%">שותפים</th><th style="width:16%">תוצאה מצופה</th><th style="width:8%">מועד</th><th style="width:8%">סטטוס</th><th style="width:7%">עדיפות</th><th style="width:7%">עלות</th><th style="width:8%">מימון</th></tr>`;
+        actions.forEach(a=>{
+          const cost=parseFloat(a.cost)||0;
+          totalCost+=cost;
+          const stL={'planned':'מתוכנן','active':'בביצוע','done':'הושלם'};
+          const prL={'high':'גבוהה','med':'בינונית','low':'נמוכה'};
+          gradeHTML+=`<tr><td>${esc(a.name)}</td><td>${esc(a.resp||'')}</td><td>${esc(a.part||'')}</td><td>${esc(a.outcome||'')}</td><td>${esc(a.date||'')}</td><td>${stL[a.status]||''}</td><td>${prL[a.priority]||''}</td><td>${cost?'₪'+cost:''}</td><td>${esc(a.funding||'')}${a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')'  :''}</td></tr>`;
+        });
+        gradeHTML+='</table>';
+      });
+
+      // Own subtopics
+      (dom.ownGrades&&dom.ownGrades[gi]||[]).forEach(st=>{
+        const actions=(st.actions||[]).filter(a=>a.name);
+        if(!actions.length)return;
+        gradeHTML+=`<div class="subtopic-title">🌿 ${esc(st.name||'')}</div>
+        <table><tr><th style="width:22%">פעולה</th><th style="width:10%">אחראי</th><th style="width:14%">שותפים</th><th style="width:16%">תוצאה מצופה</th><th style="width:8%">מועד</th><th style="width:8%">סטטוס</th><th style="width:7%">עדיפות</th><th style="width:7%">עלות</th><th style="width:8%">מימון</th></tr>`;
+        actions.forEach(a=>{
+          const cost=parseFloat(a.cost)||0;
+          totalCost+=cost;
+          const stL={'planned':'מתוכנן','active':'בביצוע','done':'הושלם'};
+          const prL={'high':'גבוהה','med':'בינונית','low':'נמוכה'};
+          gradeHTML+=`<tr><td>${esc(a.name)}</td><td>${esc(a.resp||'')}</td><td>${esc(a.part||'')}</td><td>${esc(a.outcome||'')}</td><td>${esc(a.date||'')}</td><td>${stL[a.status]||''}</td><td>${prL[a.priority]||''}</td><td>${cost?'₪'+cost:''}</td><td>${esc(a.funding||'')}${a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')'  :''}</td></tr>`;
+        });
+        gradeHTML+='</table>';
+      });
+
+      if(gradeHTML){
+        domainHTML+=`<div class="grade-block"><div class="grade-title">שכבה ${g}</div>${gradeHTML}</div>`;
+      }
+    });
+
+    // Goals
+    const goals=[...(dom.selectedGoals||[])];
+    if(dom.customGoals)goals.push(dom.customGoals);
+
+    if(domainHTML||goals.length){
+      html+=`<div class="domain-section">
+        <div class="domain-title" style="background:${d.color}">${d.name}</div>`;
+      if(goals.length){
+        html+=`<div style="padding:6px 10px;background:#f9f9f9;border:1px solid #ddd;font-size:11px;border-bottom:none"><strong>מטרות: </strong>${goals.map(g=>esc(g)).join(' | ')}</div>`;
+      }
+      html+=domainHTML+'</div>';
+    }
+  });
+
+  if(totalCost>0){
+    html+=`<div class="cost-summary">💰 סה"כ עלויות משוערות: ₪${totalCost.toLocaleString('he-IL')}</div>`;
+  }
+
+  html+=`<div class="footer">פותח ע"י זהר ניר לוי וצוות מנחי מינהל חברה ונוער | מינהל לחינוך התיישבותי | תשפ"ז</div>
+</body></html>`;
+  return html;
+}
+
+
+function openPDFWindow(html, filename){
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename||'תכנית_עבודה_תשפז.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  showToast('📄 הקובץ הורד — פתחו בדפדפן ← הדפיסו כ-PDF (Ctrl+P)');
+}
+
+function exportPDF(){
+  if(!validateAllSchoolFields())return;
+  const sn=(state.school.name||'תכנית').replace(/\s+/g,'_');
+  openPDFWindow(buildPDFContent(),'תכנית_'+sn+'_תשפז.html');
+}
+
+function exportMobilePDF(){
+  const sn=(state.school.name||'תכנית').replace(/\s+/g,'_');
+  openPDFWindow(buildPDFContent(),'תכנית_נייד_'+sn+'.html');
+}
+
+function emailPDFToSupervisor(){
+  if(!validateAllSchoolFields())return;
+  const sn=state.school.name||'בית הספר';
+  const coord=state.school.coord||'';
+  const supervisor=state.school.supervisor||'';
+  const subject=encodeURIComponent('תכנית עבודה תשפ"ז — '+sn);
+  const body=encodeURIComponent('שלום '+supervisor+',\n\nמצורפת תכנית העבודה השנתית של '+sn+' לשנה"ל תשפ"ז.\nרכז/ת: '+coord+'\n\nבברכה,\n'+coord);
+  showToast('📧 שלב 1: שמרו את ה-PDF שייפתח. שלב 2: המייל ייפתח אוטומטית.');
+  setTimeout(()=>exportMobilePDF(),300);
+  setTimeout(()=>{window.location.href='mailto:?subject='+subject+'&body='+body;},1800);
+}
+
+function emailPDFToSelf(){
+  const sn=state.school.name||'בית הספר';
+  const coord=state.school.coord||'';
+  const subject=encodeURIComponent('התכנית שלי — '+sn+' תשפ"ז');
+  const body=encodeURIComponent('שלום,\n\nהתכנית שלי מצורפת לעיון ומעקב.\n\n'+coord);
+  showToast('📧 שלב 1: שמרו את ה-PDF. שלב 2: המייל ייפתח.');
+  setTimeout(()=>exportMobilePDF(),300);
+  setTimeout(()=>{window.location.href='mailto:?subject='+subject+'&body='+body;},1800);
+}
+
 function populateSchool(){
   if(state.school.name)sv('school-name',state.school.name);
   if(state.school.symbol)sv('school-symbol',state.school.symbol);
@@ -543,6 +735,13 @@ function populateSchool(){
 
 function autoSave(){
   try{collectCurrentSection();collectSchool();const k=STORE_KEY+"_"+currentSymbol;localStorage.setItem(k,JSON.stringify(state));}catch(e){}
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast-el');
+  if(!t)return;
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3000);
 }
 
 function autoSaveSchool(){
@@ -578,7 +777,7 @@ function setMode(m){
   document.getElementById('view-mode').style.display=m==='view'?'block':'none';
   document.getElementById('timeline-mode').style.display=m==='timeline'?'block':'none';
   if(m==='view'){collectCurrentSection();populateFilters();renderView();}
-  if(m==='timeline'){collectCurrentSection();renderCalendar();}
+  if(m==='timeline'){collectCurrentSection();autoSave();calYear=new Date().getFullYear();calMonth=new Date().getMonth();renderCalendar();}
 }
 
 // TABS
@@ -654,9 +853,11 @@ function renderSection(){
 }
 
 function renderGradeContent(di,gi){
-  const sharedSubtopics=state.domains[0].grades[gi]||[];
+  if(!state.domains[0].sharedSubtopics)state.domains[0].sharedSubtopics=[];
+  const sharedSubtopics=state.domains[0].sharedSubtopics;
   // domain-specific subtopics stored separately under key 'ownGrades'
   if(!state.domains[di].ownGrades)state.domains[di].ownGrades={};
+    if(di===0&&!state.domains[0].sharedSubtopics)state.domains[0].sharedSubtopics=[];
   if(!state.domains[di].ownGrades[gi])state.domains[di].ownGrades[gi]=[];
   const ownSubtopics=state.domains[di].ownGrades[gi];
   const gc=document.getElementById('grade-content');
@@ -688,10 +889,13 @@ function renderGradeContent(di,gi){
       const visibleHere = scope==='all' ||
         (scope==='this' && gi===definedIn) ||
         (scope==='selected' && selectedGrades.includes(gi));
-      if(di!==0 && !visibleHere) return;
+      if(!visibleHere && di!==0) return; // hide in other domains if not in scope
+      // In domain 0: always show (to allow editing scope), but mark as not-in-scope
+      const inScope = visibleHere;
 
       const block=document.createElement('div');
       block.className='subtopic-block';
+      if(di===0 && !inScope) return; // Don't show in domain 0 either if not in scope
 
       // Scope selector — only in domain 0
       let scopeHTML='';
@@ -721,7 +925,7 @@ function renderGradeContent(di,gi){
       }
 
       const nameField=di===0
-        ? `<input class="st-name-input" type="text" value="${esc(st.name||'')}" placeholder="שם תת-הנושא..." onchange="state.domains[0].grades[${gi}][${si}].name=this.value">`
+        ? `<input class="st-name-input" type="text" value="${esc(st.name||'')}" placeholder="שם תת-הנושא..." onchange="if(state.domains[0].sharedSubtopics&&state.domains[0].sharedSubtopics[${si}])state.domains[0].sharedSubtopics[${si}].name=this.value">`
         : `<span class="st-name-input" style="background:#f0f4f8;cursor:default;padding:5px 8px;border-radius:5px;font-size:13px;font-weight:500;color:#1a3a5c">${esc(st.name||'(ללא שם)')}</span>`;
       const delBtn=di===0
         ? `<button class="st-del" onclick="deleteSubtopic(0,${gi},${si})">הסר</button>`
@@ -749,7 +953,7 @@ function renderGradeContent(di,gi){
           <th style="width:3%"></th>
         </tr></thead>
         <tbody id="tbody-${di}-${gi}-s${si}">
-        ${(st.actions||[]).map((a,ai)=>actionRow(di,gi,'s'+si,ai,a)).join('')}
+        ${((st.gradeActions&&st.gradeActions[gi])||st.actions||[]).map((a,ai)=>actionRow(di,gi,'s'+si,ai,a)).join('')}
         </tbody>
       </table>
       <button class="add-row-btn" onclick="addActionShared(${di},${gi},${si})">+ הוסף פעולה</button>`;
@@ -762,6 +966,11 @@ function renderGradeContent(di,gi){
       addShared.textContent='+ הוסף תת-נושא משותף';
       addShared.onclick=()=>addSubtopic(0,gi);
       gc.appendChild(addShared);
+      const manageBtn=document.createElement('button');
+      manageBtn.style.cssText='margin-right:8px;font-size:12px;background:none;border:1px solid #888;border-radius:6px;padding:5px 12px;cursor:pointer;color:#555;margin-top:5px';
+      manageBtn.textContent='⚙️ נהל שיוך שכבות לכל תת-הנושאים';
+      manageBtn.onclick=()=>showManageSubtopics();
+      gc.appendChild(manageBtn);
     }
   }else if(di===0){
     const addShared=document.createElement('button');
@@ -769,6 +978,11 @@ function renderGradeContent(di,gi){
     addShared.textContent='+ הוסף תת-נושא משותף';
     addShared.onclick=()=>addSubtopic(0,gi);
     gc.appendChild(addShared);
+    const manageBtn=document.createElement('button');
+    manageBtn.style.cssText='margin-right:8px;font-size:12px;background:none;border:1px solid #888;border-radius:6px;padding:5px 12px;cursor:pointer;color:#555;margin-top:5px';
+    manageBtn.textContent='⚙️ נהל שיוך שכבות לכל תת-הנושאים';
+    manageBtn.onclick=()=>showManageSubtopics();
+    gc.appendChild(manageBtn);
   }
 
   // --- תת-נושאים ייחודיים לתחום ---
@@ -821,26 +1035,130 @@ function renderGradeContent(di,gi){
   }
 }
 
+function showManageSubtopics(){
+  const subs=state.domains[0].sharedSubtopics||[];
+  const rows=subs.map((st,si)=>{
+    const scope=st.scope||'all';
+    const selGrades=st.selectedGrades||[];
+    const gradeChecks=GRADES.map((g,gi)=>
+      `<label style="margin-left:6px;font-size:12px"><input type="checkbox" ${selGrades.includes(gi)?'checked':''} onchange="mgToggleGrade(${si},${gi},this.checked)"> ${g}</label>`
+    ).join('');
+    return `<tr id="mg-row-${si}" style="border-bottom:1px solid #eee">
+      <td style="padding:8px;font-weight:500;color:#1a3a5c;min-width:120px">
+        <input type="text" value="${esc(st.name||'')}" onchange="mgRename(${si},this.value)" style="font-size:13px;border:1px solid #ddd;border-radius:5px;padding:4px 7px;width:100%">
+      </td>
+      <td style="padding:8px">
+        <label style="margin-left:10px;font-size:12px"><input type="radio" name="mg-scope-${si}" value="all" ${scope==='all'?'checked':''} onchange="mgScope(${si},'all')"> כל השכבות</label>
+        <label style="margin-left:10px;font-size:12px"><input type="radio" name="mg-scope-${si}" value="selected" ${scope==='selected'?'checked':''} onchange="mgScope(${si},'selected')"> שכבות נבחרות</label>
+        <div id="mg-grades-${si}" style="${scope==='selected'?'':'display:none'};margin-top:4px">${gradeChecks}</div>
+      </td>
+      <td style="padding:8px;text-align:center">
+        <button onclick="mgDelete(${si})" style="background:#c0392b;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer">מחק</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const popup=document.createElement('div');
+  popup.id='mg-popup';
+  popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;display:flex;align-items:center;justify-content:center';
+  popup.innerHTML=`
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:640px;width:94%;max-height:85vh;overflow-y:auto;direction:rtl">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:16px;color:#1a3a5c;margin:0">⚙️ ניהול תת-נושאים משותפים</h3>
+        <button onclick="mgClose()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888">✕</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse" id="mg-table">
+        <thead><tr style="background:#f4f7fb">
+          <th style="padding:8px;text-align:right;font-size:13px">שם תת-נושא</th>
+          <th style="padding:8px;text-align:right;font-size:13px">שכבות</th>
+          <th style="padding:8px;font-size:13px">מחיקה</th>
+        </tr></thead>
+        <tbody id="mg-tbody">${rows}</tbody>
+      </table>
+      <div style="margin-top:14px;padding:10px;background:#f4f7fb;border-radius:8px;display:flex;gap:8px;align-items:center">
+        <input type="text" id="mg-new-name" placeholder="שם תת-נושא חדש..." style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px">
+        <button onclick="mgAddNew()" style="background:#1a5276;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer">+ הוסף</button>
+      </div>
+      <div style="text-align:center;margin-top:14px">
+        <button onclick="mgClose()" style="background:#1a5276;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;cursor:pointer">סגור ושמור</button>
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+}
+
+function mgClose(){
+  const p=document.getElementById('mg-popup');
+  if(p)p.remove();
+  renderGradeContent(activeTab,activeGrades[activeTab]);
+}
+
+function mgRename(si,val){
+  if(state.domains[0].sharedSubtopics[si])
+    state.domains[0].sharedSubtopics[si].name=val;
+  autoSave();
+}
+
+function mgDelete(si){
+  if(!confirm('למחוק את תת-הנושא? הפעולות שהוזנו בו יאבדו.'))return;
+  state.domains[0].sharedSubtopics.splice(si,1);
+  autoSave();
+  // Rebuild popup
+  const p=document.getElementById('mg-popup');
+  if(p)p.remove();
+  showManageSubtopics();
+}
+
+function mgAddNew(){
+  const inp=document.getElementById('mg-new-name');
+  if(!inp||!inp.value.trim()){alert('נא להזין שם לתת-הנושא');return;}
+  if(!state.domains[0].sharedSubtopics)state.domains[0].sharedSubtopics=[];
+  state.domains[0].sharedSubtopics.push({name:inp.value.trim(),actions:[],gradeActions:{},scope:'all',selectedGrades:[],definedInGrade:0});
+  inp.value='';
+  autoSave();
+  const p=document.getElementById('mg-popup');
+  if(p)p.remove();
+  showManageSubtopics();
+}
+
+function mgScope(si,scope){
+  if(!state.domains[0].sharedSubtopics[si])return;
+  state.domains[0].sharedSubtopics[si].scope=scope;
+  const div=document.getElementById('mg-grades-'+si);
+  if(div)div.style.display=scope==='selected'?'block':'none';
+  autoSave();
+}
+
+function mgToggleGrade(si,gi,checked){
+  if(!state.domains[0].sharedSubtopics[si])return;
+  if(!state.domains[0].sharedSubtopics[si].selectedGrades)
+    state.domains[0].sharedSubtopics[si].selectedGrades=[];
+  const arr=state.domains[0].sharedSubtopics[si].selectedGrades;
+  if(checked&&!arr.includes(gi))arr.push(gi);
+  if(!checked){const idx=arr.indexOf(gi);if(idx>=0)arr.splice(idx,1);}
+  autoSave();
+}
+
 function updateScope(di,gi,si,scope){
-  if(!state.domains[0].grades[gi][si])return;
-  state.domains[0].grades[gi][si].scope=scope;
-  state.domains[0].grades[gi][si].definedInGrade=gi;
+  if(!state.domains[0].sharedSubtopics)return;
+  if(!state.domains[0].sharedSubtopics[si])return;
+  state.domains[0].sharedSubtopics[si].scope=scope;
+  state.domains[0].sharedSubtopics[si].definedInGrade=gi;
   const cbDiv=document.getElementById('grade-checkboxes-'+gi+'-'+si);
   if(cbDiv)cbDiv.style.display=scope==='selected'?'block':'none';
-  // Disable/enable checkboxes
   if(cbDiv){
     cbDiv.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.disabled=scope!=='selected');
   }
   if(scope==='this'){
-    state.domains[0].grades[gi][si].selectedGrades=[gi];
+    state.domains[0].sharedSubtopics[si].selectedGrades=[gi];
   }
   autoSave();
 }
 
 function toggleGradeScope(di,gi,si,gIdx,checked){
-  if(!state.domains[0].grades[gi][si].selectedGrades)
+  if(!state.domains[0].sharedSubtopics[si])return;
+  if(!state.domains[0].sharedSubtopics[si].selectedGrades)
     state.domains[0].grades[gi][si].selectedGrades=[];
-  const arr=state.domains[0].grades[gi][si].selectedGrades;
+  const arr=state.domains[0].sharedSubtopics[si].selectedGrades;
   if(checked&&!arr.includes(gIdx))arr.push(gIdx);
   if(!checked){const idx=arr.indexOf(gIdx);if(idx>=0)arr.splice(idx,1);}
   autoSave();
@@ -848,8 +1166,10 @@ function toggleGradeScope(di,gi,si,gIdx,checked){
 
 function addActionShared(di,gi,si){
   collectCurrentSection();
-  if(!state.domains[0].grades[gi][si].actions)state.domains[0].grades[gi][si].actions=[];
-  state.domains[0].grades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:'',funding:'',payStatus:''});
+  if(!state.domains[0].sharedSubtopics[si])return;
+  if(!state.domains[0].sharedSubtopics[si].gradeActions)state.domains[0].sharedSubtopics[si].gradeActions={};
+  if(!state.domains[0].sharedSubtopics[si].gradeActions[gi])state.domains[0].sharedSubtopics[si].gradeActions[gi]=[];
+  state.domains[0].sharedSubtopics[si].gradeActions[gi].push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',feedback:'',funding:'',payStatus:''});
   renderGradeContent(di,gi);
 }
 function addActionOwn(di,gi,si){
@@ -866,6 +1186,7 @@ function addAction(di,gi,si){
 function addOwnSubtopic(di,gi){
   collectCurrentSection();
   if(!state.domains[di].ownGrades)state.domains[di].ownGrades={};
+    if(di===0&&!state.domains[0].sharedSubtopics)state.domains[0].sharedSubtopics=[];
   if(!state.domains[di].ownGrades[gi])state.domains[di].ownGrades[gi]=[];
   state.domains[di].ownGrades[gi].push({name:'',actions:[]});
   renderGradeContent(di,gi);
@@ -897,7 +1218,7 @@ function actionRow(di,gi,si,ai,a){
     <td><textarea rows="2" oninput="uaRow(this,'measure')" placeholder="מדד מדיד (מספר, %...)" style="font-size:11px">${esc(a.measure||"")}</textarea></td>
     <td>
       <input type="date" value="${esc(a.date||'')}" onchange="uaRow(this,'date')" style="font-size:11px;width:100%;padding:3px">
-      ${a.date&&a.name?`<button onclick="addToCalendarRow(this)" style="font-size:10px;background:none;border:none;cursor:pointer;color:#1a5276;padding:1px 0;width:100%;text-align:right" title="הוסף ל-Google Calendar">📅 הוסף ל-Calendar</button>`:''}
+
     </td>
     <td>
       <select class="status-sel ${stClass}" onchange="uaRow(this,'status');updateRowStyle(this)">
@@ -959,8 +1280,12 @@ function ua(di,gi,si,ai,f,v){
   if(typeof si==='string'&&(si[0]==='s'||si[0]==='o')){
     const prefix=si[0];const idx=parseInt(si.slice(1));
     if(prefix==='s'){
-      if(state.domains[0].grades[gi]&&state.domains[0].grades[gi][idx])
-        state.domains[0].grades[gi][idx].actions[ai][f]=v;
+      const st=state.domains[0].sharedSubtopics?.[idx];
+      if(st){
+        const arr=(st.gradeActions&&st.gradeActions[gi])||st.actions||[];
+        if(arr[ai])arr[ai][f]=v;
+        if(st.gradeActions)st.gradeActions[gi]=arr;else st.actions=arr;
+      }
     }else{
       if(state.domains[di].ownGrades?.[gi]?.[idx])
         state.domains[di].ownGrades[gi][idx].actions[ai][f]=v;
@@ -975,14 +1300,21 @@ function ua(di,gi,si,ai,f,v){
 
 function updateCostTotal(){
   let total=0;
+  // Shared subtopics gradeActions
+  (state.domains[0].sharedSubtopics||[]).forEach(st=>{
+    if(!st.gradeActions)return;
+    Object.values(st.gradeActions).forEach(actions=>{
+      (actions||[]).forEach(a=>{if(a.cost)total+=parseFloat(a.cost)||0;});
+    });
+  });
+  // Own subtopics per domain
   DOMAINS.forEach((_,di)=>{
     GRADES.forEach((_,gi)=>{
-      (state.domains[di].grades[gi]||[]).forEach(st=>(st.actions||[]).forEach(a=>{if(a.cost)total+=parseFloat(a.cost)||0;}));
       (state.domains[di].ownGrades?.[gi]||[]).forEach(st=>(st.actions||[]).forEach(a=>{if(a.cost)total+=parseFloat(a.cost)||0;}));
     });
   });
   const el=document.getElementById('cost-total');
-  if(el)el.textContent=`סה"כ עלויות משוערות: ₪${total.toLocaleString('he-IL')}`;
+  if(el)el.textContent=total>0?`סה"כ עלויות משוערות: ₪${total.toLocaleString('he-IL')}`:'';
 }
 
 function addToCalendar(di,gi,si,ai){
@@ -1005,16 +1337,10 @@ function addToCalendar(di,gi,si,ai){
   window.open(url,'_blank');
 }
 
-function addSubtopic(di,gi){collectCurrentSection();state.domains[di].grades[gi].push({name:'',actions:[]});renderGradeContent(di,gi);}
-function deleteSubtopic(di,gi,si){if(confirm('למחוק את תת-הנושא?')){state.domains[di].grades[gi].splice(si,1);renderGradeContent(di,gi);}}
-function deleteAction(di,gi,si,ai){
-  if(typeof si==='string'&&(si[0]==='s'||si[0]==='o')){
-    const prefix=si[0];const idx=parseInt(si.slice(1));
-    if(prefix==='s')state.domains[0].grades[gi][idx].actions.splice(ai,1);
-    else state.domains[di].ownGrades[gi][idx].actions.splice(ai,1);
-  }else{
-    state.domains[di].grades[gi][parseInt(si)].actions.splice(ai,1);
-  }
+function addSubtopic(di,gi){
+  collectCurrentSection();
+  if(!state.domains[0].sharedSubtopics)state.domains[0].sharedSubtopics=[];
+  state.domains[0].sharedSubtopics.push({name:'',actions:[],scope:'all',selectedGrades:[],definedInGrade:gi});
   renderGradeContent(di,gi);
 }
 
@@ -1041,9 +1367,11 @@ function collectCurrentSection(){
 
     let actionArr;
     if(prefix==='s'){
-      // shared — stored in domain 0
-      if(!state.domains[0].grades[gi][si])return;
-      actionArr=state.domains[0].grades[gi][si].actions;
+      const st=state.domains[0].sharedSubtopics?.[si];
+      if(!st)return;
+      if(!st.gradeActions)st.gradeActions={};
+      if(!st.gradeActions[gi])st.gradeActions[gi]=[];
+      actionArr=st.gradeActions[gi];
     }else{
       // own — stored in domain di ownGrades
       if(!state.domains[di].ownGrades?.[gi]?.[si])return;
@@ -1142,11 +1470,19 @@ function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalend
 
 function getAllActions(){
   const actions=[];
+  // Shared subtopics (domain 0) - gradeActions per grade — appear in ALL domains
+  const shared=state.domains[0].sharedSubtopics||[];
+  shared.forEach(st=>{
+    if(!st.gradeActions)return;
+    GRADES.forEach((_,gi)=>{
+      (st.gradeActions[gi]||[]).forEach(a=>{
+        if(a.name&&a.date)actions.push({...a,domain:'משותף: '+st.name,color:DOMAINS[0].color,grade:GRADES[gi],subtopic:st.name||''});
+      });
+    });
+  });
+  // All domains - ownGrades
   DOMAINS.forEach((d,di)=>{
     GRADES.forEach((_,gi)=>{
-      (state.domains[di].grades[gi]||[]).forEach(st=>{
-        (st.actions||[]).forEach(a=>{if(a.name&&a.date)actions.push({...a,domain:d.name,color:d.color,grade:GRADES[gi],subtopic:st.name||''});});
-      });
       (state.domains[di].ownGrades?.[gi]||[]).forEach(st=>{
         (st.actions||[]).forEach(a=>{if(a.name&&a.date)actions.push({...a,domain:d.name,color:d.color,grade:GRADES[gi],subtopic:st.name||''});});
       });
