@@ -472,7 +472,10 @@ function lockApp(){
   document.getElementById('code-err').textContent='';
   setTimeout(()=>document.getElementById('code-input').focus(),100);
 }
-document.getElementById('code-input').addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});
+document.addEventListener('DOMContentLoaded',()=>{
+  const ci=document.getElementById('code-input');
+  if(ci)ci.addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});
+});
 
 async function openMainWithSymbol(sym){
   currentSymbol=sym;
