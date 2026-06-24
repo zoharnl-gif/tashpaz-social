@@ -541,6 +541,10 @@ function populateSchool(){
   if(state.school.name)autoSaveSchool();
 }
 
+function autoSave(){
+  try{collectCurrentSection();collectSchool();const k=STORE_KEY+"_"+currentSymbol;localStorage.setItem(k,JSON.stringify(state));}catch(e){}
+}
+
 function autoSaveSchool(){
   if(!currentSymbol)return;
   const localKey=STORE_KEY+'_'+currentSymbol;
@@ -1214,4 +1218,16 @@ function closeCalPopup(){
   document.getElementById('cal-popup').style.display='none';
 }
 
-
+// INIT
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('lock-screen').style.display='flex';
+  document.getElementById('main-screen').style.display='none';
+  setTimeout(()=>document.getElementById('code-input')?.focus(),200);
+  // Auto-save every 60 seconds
+  setInterval(()=>{if(currentSymbol)autoSave();},60000);
+  // Save before unload
+  window.addEventListener('beforeunload',()=>{if(currentSymbol)autoSave();});
+});
+</script>
+</body>
+</html>
