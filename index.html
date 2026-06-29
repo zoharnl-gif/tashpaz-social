@@ -414,7 +414,6 @@ let currentUser={name:'',role:''};
 
 function saveData(){
   collectCurrentSection();collectSchool();
-  // Save everything in ONE request
   const allData={
     action:'save_all',
     symbol:currentSymbol,
@@ -433,10 +432,23 @@ function saveData(){
       school:di===0?state.school:undefined
     };
   });
-  const params=encodeURIComponent(JSON.stringify(allData));
-  const img=new Image();
-  img.src=APPS_SCRIPT_URL+'?data='+params;
-  showToast('✓ נשמר בהצלחה');
+  // Use JSONP (script tag) to bypass CORS
+  const cbName='save_cb_'+Date.now();
+  window[cbName]=function(){
+    delete window[cbName];
+    if(s.parentNode)s.parentNode.removeChild(s);
+    showToast('✓ נשמר בהצלחה');
+  };
+  const s=document.createElement('script');
+  s.src=APPS_SCRIPT_URL+'?data='+encodeURIComponent(JSON.stringify(allData))+'&callback='+cbName;
+  document.head.appendChild(s);
+  // Fallback toast in case callback doesn't fire
+  setTimeout(()=>{
+    if(window[cbName]){
+      delete window[cbName];
+      showToast('✓ נשמר');
+    }
+  },5000);
 }
 
 async function loadData(){
