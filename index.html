@@ -182,7 +182,8 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
       <input class="lock-input" type="text" id="user-name-input" maxlength="40" placeholder="שמך המלא" style="margin-bottom:10px">
       <select class="lock-input" id="user-role-input" style="margin-bottom:10px;font-size:14px;text-align:center">
         <option value="">-- בחר/י תפקיד --</option>
-        <option value="רכז/ת חברתי/ת">רכז/ת חברתי/ת</option>
+        <option value='רכז/ת חברתי/ת חט"ב'>רכז/ת חברתי/ת חט"ב</option>
+        <option value='רכז/ת חברתי/ת חט"ע'>רכז/ת חברתי/ת חט"ע</option>
         <option value="מנחה/ת מועצת תלמידים">מנחה/ת מועצת תלמידים</option>
         <option value="רכז/ת מעורבות חברתית">רכז/ת מעורבות חברתית</option>
         <option value="רכז/ת שח״ק ירוק">רכז/ת שח״ק ירוק</option>
@@ -217,7 +218,7 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
       <span id="cost-total" style="font-size:12px;color:#fff;opacity:.85;align-self:center;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:6px"></span>
       <button class="btn btn-export" onclick="exportForSupervisor()">📤 שלח למנחה</button>
       <button class="btn" style="background:#6c3483;color:#fff" onclick="exportPDF()">📄 ייצא תכנית PDF</button>
-      <button class="btn btn-lock" onclick="lockApp()">🔒 נעל</button>
+      <button class="btn" onclick="window.open('https://zoharnl-gif.github.io/tashpaz-social/guide.html','_blank')" style="background:rgba(255,255,255,.2);color:#fff;font-size:12px">📖 הנחיות</button>
       <button class="btn" style="background:#922b21;color:#fff" onclick="clearAllData()">🗑 נקה הכל</button>
     </div>
   </div>
@@ -311,6 +312,32 @@ const DOMAINS=[
   {name:'שח"ק ירוק',color:"#196f3d"},
   {name:"הכנה למסע לפולין",color:"#8e44ad"}
 ];
+
+// Role → editable domain indices (null = all)
+const ROLE_DOMAIN_MAP = {
+  'רכז/ת חברתי/ת חט"ב': [0,1,2,3,5,6],  // all except service(4) and poland(7)
+  'רכז/ת חברתי/ת חט"ע': null,              // all domains
+  'מנחה/ת מועצת תלמידים': [2,3],
+  'רכז/ת מעורבות חברתית': [1],
+  'רכז/ת שח"ק ירוק': [6],
+  'רכז/ת הכנה לשירות': [4],
+  'רכז/ת טיולים וסיורים': [5]
+};
+
+function canEditDomain(di){
+  if(!currentUser||!currentUser.role)return true;
+  const allowed=ROLE_DOMAIN_MAP[currentUser.role];
+  if(allowed===null||allowed===undefined)return true;
+  return allowed.includes(di);
+}
+
+function getDefaultDomain(){
+  if(!currentUser||!currentUser.role)return 0;
+  const allowed=ROLE_DOMAIN_MAP[currentUser.role];
+  if(allowed===null||allowed===undefined)return 0;
+  return allowed[0]||0;
+}
+
 const GRADES=["ז׳","ח׳","ט׳","י׳","י\"א","י\"ב"];
 const STORE_KEY="tspz_plan_v4";
 const CODE_KEY="tspz_code_v3";
@@ -521,7 +548,19 @@ async function openMainWithSymbol(sym){
   // Show current user in topbar
   const udisp=document.getElementById('current-user-display');
   if(udisp&&currentUser.name)udisp.textContent='👤 '+currentUser.name+' | '+currentUser.role;
-  try{populateSchool();buildTabs();renderSection();populateFilters();}catch(e){console.error(e);}
+  // Jump to default domain for this role
+  const defDomain=getDefaultDomain();
+  if(defDomain!==0)activeTab=defDomain;
+  try{
+    populateSchool();
+    buildTabs();
+    renderSection();
+    populateFilters();
+    // If school data not loaded yet, try from state
+    if(!document.getElementById('school-name')?.value && state.school?.name){
+      populateSchool();
+    }
+  }catch(e){console.error(e);}
 }
 
 function openMain(){
@@ -765,14 +804,16 @@ function emailPDFToSelf(){
 }
 
 function populateSchool(){
+  // Also try to get school from domain 0 if not in state
+  if(!state.school.name && state.domains[0] && state.domains[0].school){
+    state.school=state.domains[0].school;
+  }
   if(state.school.name)sv('school-name',state.school.name);
-  if(state.school.symbol)sv('school-symbol',state.school.symbol);
+  if(state.school.symbol)sv('school-symbol',state.school.symbol||currentSymbol);
   if(state.school.coord)sv('coord-name',state.school.coord);
   if(state.school.phone)sv('coord-phone',state.school.phone);
   const sel=document.getElementById('supervisor-name');
   if(sel&&state.school.supervisor)sel.value=state.school.supervisor;
-  // Also save school info whenever populated
-  if(state.school.name)autoSaveSchool();
 }
 
 function autoSave(){
@@ -1000,7 +1041,14 @@ function renderGradeContent(di,gi){
         ${((st.gradeActions&&st.gradeActions[gi])||st.actions||[]).map((a,ai)=>actionRow(di,gi,'s'+si,ai,a)).join('')}
         </tbody>
       </table>
-      <button class="add-row-btn" onclick="addActionShared(${di},${gi},${si})">+ הוסף פעולה</button>`;
+      `;
+      if(canEditDomain(di)){
+        const addBtn=document.createElement('button');
+        addBtn.className='add-row-btn';
+        addBtn.textContent='+ הוסף פעולה';
+        addBtn.onclick=()=>addActionShared(di,gi,si);
+        block.appendChild(addBtn);
+      }
       gc.appendChild(block);
     });
 
@@ -1066,7 +1114,14 @@ function renderGradeContent(di,gi){
         ${(st.actions||[]).map((a,ai)=>actionRow(di,gi,'o'+si,ai,a)).join('')}
         </tbody>
       </table>
-      <button class="add-row-btn" onclick="addActionOwn(${di},${gi},${si})">+ הוסף פעולה</button>`;
+      `;
+      if(canEditDomain(di)){
+        const addBtnOwn=document.createElement('button');
+        addBtnOwn.className='add-row-btn';
+        addBtnOwn.textContent='+ הוסף פעולה';
+        addBtnOwn.onclick=()=>addActionOwn(di,gi,si);
+        block.appendChild(addBtnOwn);
+      }
       gc.appendChild(block);
     });
 
