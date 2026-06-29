@@ -399,47 +399,48 @@ function saveData(){
 
 async function loadData(){
   if(!currentSymbol){initState();return;}
-  try{
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),8000);
-    const resp=await fetch(APPS_SCRIPT_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'load',symbol:currentSymbol}),
-      signal:controller.signal
-    });
-    clearTimeout(timeout);
-    const text=await resp.text();
-    if(text&&text!=='NOT_FOUND'&&text!=='ERROR'&&text!=='{}'){
-      const data=JSON.parse(text);
+  return new Promise((resolve)=>{
+    const callbackName='cb_'+Date.now();
+    const script=document.createElement('script');
+    const timeout=setTimeout(()=>{
+      delete window[callbackName];
+      if(script.parentNode)script.parentNode.removeChild(script);
       initState();
-      if(data.school)state.school=data.school;
-      DOMAINS.forEach((_,di)=>{
-        const key='d'+di;
-        if(data[key]){
-          state.domains[di].grades=data[key].grades||{};
-          state.domains[di].ownGrades=data[key].ownGrades||{};
-          state.domains[di].selectedGoals=data[key].selectedGoals||[];
-          state.domains[di].customGoals=data[key].customGoals||'';
-          state.domains[di].selectedOutcomes=data[key].selectedOutcomes||[];
-          state.domains[di].customOutcomes=data[key].customOutcomes||'';
-          if(di===0&&data[key].sharedSubtopics)state.domains[0].sharedSubtopics=data[key].sharedSubtopics;
+      resolve();
+    },8000);
+    window[callbackName]=(data)=>{
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if(script.parentNode)script.parentNode.removeChild(script);
+      if(data&&data!=='NOT_FOUND'&&data!=='ERROR'){
+        initState();
+        if(data.school)state.school=data.school;
+        DOMAINS.forEach((_,di)=>{
+          const key='d'+di;
+          if(data[key]){
+            state.domains[di].grades=data[key].grades||{};
+            state.domains[di].ownGrades=data[key].ownGrades||{};
+            state.domains[di].selectedGoals=data[key].selectedGoals||[];
+            state.domains[di].customGoals=data[key].customGoals||'';
+            state.domains[di].selectedOutcomes=data[key].selectedOutcomes||[];
+            state.domains[di].customOutcomes=data[key].customOutcomes||'';
+            if(di===0&&data[key].sharedSubtopics)state.domains[0].sharedSubtopics=data[key].sharedSubtopics;
+          }
+        });
+        if(data.full){
+          const full=data.full;
+          if(full.school&&!data.school)state.school=full.school;
+          if(full.domains)DOMAINS.forEach((_,di)=>{if(full.domains[di]&&!data['d'+di])state.domains[di]=full.domains[di];});
         }
-      });
-      if(data.full){
-        const full=data.full;
-        if(full.school&&!data.school)state.school=full.school;
-        if(full.domains)DOMAINS.forEach((_,di)=>{if(full.domains[di]&&!data['d'+di])state.domains[di]=full.domains[di];});
+        initState();
+      }else{
+        initState();
       }
-      initState();
-      return;
-    }
-    // Symbol not found — new school
-    initState();
-  }catch(e){
-    // Network error or CORS — start fresh (no local fallback)
-    initState();
-  }
+      resolve();
+    };
+    script.src=APPS_SCRIPT_URL+'?action=load&symbol='+encodeURIComponent(currentSymbol)+'&callback='+callbackName;
+    document.head.appendChild(script);
+  });
 }
 
 function getCode(){return localStorage.getItem(CODE_KEY)||null;}
