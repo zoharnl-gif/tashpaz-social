@@ -414,41 +414,46 @@ let currentUser={name:'',role:''};
 
 function saveData(){
   collectCurrentSection();collectSchool();
-  const allData={
-    action:'save_all',
-    symbol:currentSymbol,
-    school:state.school,
-    domains:{}
-  };
-  DOMAINS.forEach((_,di)=>{
-    allData.domains[di]={
-      grades:state.domains[di].grades,
-      ownGrades:state.domains[di].ownGrades,
-      selectedGoals:state.domains[di].selectedGoals,
-      customGoals:state.domains[di].customGoals,
-      selectedOutcomes:state.domains[di].selectedOutcomes,
-      customOutcomes:state.domains[di].customOutcomes,
-      sharedSubtopics:di===0?state.domains[0].sharedSubtopics:undefined,
-      school:di===0?state.school:undefined
-    };
-  });
-  // Use JSONP (script tag) to bypass CORS
-  const cbName='save_cb_'+Date.now();
-  window[cbName]=function(){
-    delete window[cbName];
-    if(s.parentNode)s.parentNode.removeChild(s);
-    showToast('✓ נשמר בהצלחה');
-  };
-  const s=document.createElement('script');
-  s.src=APPS_SCRIPT_URL+'?data='+encodeURIComponent(JSON.stringify(allData))+'&callback='+cbName;
-  document.head.appendChild(s);
-  // Fallback toast in case callback doesn't fire
-  setTimeout(()=>{
-    if(window[cbName]){
-      delete window[cbName];
-      showToast('✓ נשמר');
+  
+  function sendJSONP(payload, cb){
+    const s=document.createElement('script');
+    const cbName='scb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    window[cbName]=function(){delete window[cbName];if(s.parentNode)s.parentNode.removeChild(s);if(cb)cb();};
+    setTimeout(()=>{if(window[cbName]){delete window[cbName];if(s.parentNode)s.parentNode.removeChild(s);}},8000);
+    s.src=APPS_SCRIPT_URL+'?data='+encodeURIComponent(JSON.stringify(payload))+'&callback='+cbName;
+    document.head.appendChild(s);
+  }
+
+  // Save domain 0 (with school + sharedSubtopics) 
+  sendJSONP({
+    action:'save_domain',symbol:currentSymbol,domainIdx:0,
+    domainData:{
+      grades:state.domains[0].grades,
+      ownGrades:state.domains[0].ownGrades,
+      selectedGoals:state.domains[0].selectedGoals,
+      customGoals:state.domains[0].customGoals,
+      selectedOutcomes:state.domains[0].selectedOutcomes,
+      customOutcomes:state.domains[0].customOutcomes,
+      sharedSubtopics:state.domains[0].sharedSubtopics,
+      school:state.school
     }
-  },5000);
+  }, ()=>{
+    // After domain 0 saved, save rest and update summary
+    DOMAINS.forEach((_,di)=>{
+      if(di===0)return;
+      sendJSONP({
+        action:'save_domain',symbol:currentSymbol,domainIdx:di,
+        domainData:{
+          grades:state.domains[di].grades,
+          ownGrades:state.domains[di].ownGrades,
+          selectedGoals:state.domains[di].selectedGoals,
+          customGoals:state.domains[di].customGoals,
+          selectedOutcomes:state.domains[di].selectedOutcomes,
+          customOutcomes:state.domains[di].customOutcomes
+        }
+      }, di===DOMAINS.length-1?()=>showToast('✓ נשמר בהצלחה'):null);
+    });
+  });
 }
 
 async function loadData(){
