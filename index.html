@@ -375,13 +375,10 @@ let currentSymbol='';
 
 function saveData(){
   collectCurrentSection();collectSchool();
-  // Save locally
-  const localKey=STORE_KEY+'_'+currentSymbol;
-  try{localStorage.setItem(localKey,JSON.stringify(state));}catch(e){}
   // Save school info to cloud
   fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({action:'save_school',symbol:currentSymbol,schoolData:state.school})});
-  // Save each domain separately — no overwriting others
+  // Save each domain separately
   const savePromises=DOMAINS.map((_,di)=>{
     const domainData={
       grades:state.domains[di].grades,
@@ -397,56 +394,54 @@ function saveData(){
   });
   Promise.all(savePromises)
     .then(()=>showToast('✓ נשמר בהצלחה'))
-    .catch(()=>showToast('✓ נשמר מקומית (אין חיבור לאינטרנט)'));
+    .catch(()=>showToast('⚠️ שגיאה בשמירה — בדוק/י חיבור לאינטרנט'));
 }
 
 async function loadData(){
-  const localKey=STORE_KEY+'_'+currentSymbol;
-  if(currentSymbol){
-    try{
-      const controller=new AbortController();
-      const timeout=setTimeout(()=>controller.abort(),5000); // 5 sec timeout
-      const resp=await fetch(APPS_SCRIPT_URL,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'load',symbol:currentSymbol}),
-        signal:controller.signal
-      });
-      clearTimeout(timeout);
-      const text=await resp.text();
-      if(text&&text!=='NOT_FOUND'&&text!=='ERROR'&&text!=='{}'){
-        const data=JSON.parse(text);
-        initState();
-        if(data.school)state.school=data.school;
-        DOMAINS.forEach((_,di)=>{
-          const key='d'+di;
-          if(data[key]){
-            state.domains[di].grades=data[key].grades||{};
-            state.domains[di].ownGrades=data[key].ownGrades||{};
-            state.domains[di].selectedGoals=data[key].selectedGoals||[];
-            state.domains[di].customGoals=data[key].customGoals||'';
-            state.domains[di].selectedOutcomes=data[key].selectedOutcomes||[];
-            state.domains[di].customOutcomes=data[key].customOutcomes||'';
-            if(di===0&&data[key].sharedSubtopics)state.domains[0].sharedSubtopics=data[key].sharedSubtopics;
-          }
-        });
-        if(data.full){
-          const full=data.full;
-          if(full.school&&!data.school)state.school=full.school;
-          if(full.domains)DOMAINS.forEach((_,di)=>{if(full.domains[di]&&!data['d'+di])state.domains[di]=full.domains[di];});
+  if(!currentSymbol){initState();return;}
+  const errEl=document.getElementById('code-err');
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    const resp=await fetch(APPS_SCRIPT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'load',symbol:currentSymbol}),
+      signal:controller.signal
+    });
+    clearTimeout(timeout);
+    const text=await resp.text();
+    if(text&&text!=='NOT_FOUND'&&text!=='ERROR'&&text!=='{}'){
+      const data=JSON.parse(text);
+      initState();
+      if(data.school)state.school=data.school;
+      DOMAINS.forEach((_,di)=>{
+        const key='d'+di;
+        if(data[key]){
+          state.domains[di].grades=data[key].grades||{};
+          state.domains[di].ownGrades=data[key].ownGrades||{};
+          state.domains[di].selectedGoals=data[key].selectedGoals||[];
+          state.domains[di].customGoals=data[key].customGoals||'';
+          state.domains[di].selectedOutcomes=data[key].selectedOutcomes||[];
+          state.domains[di].customOutcomes=data[key].customOutcomes||'';
+          if(di===0&&data[key].sharedSubtopics)state.domains[0].sharedSubtopics=data[key].sharedSubtopics;
         }
-        initState();
-        try{localStorage.setItem(localKey,JSON.stringify(state));}catch(e){}
-        return;
+      });
+      if(data.full){
+        const full=data.full;
+        if(full.school&&!data.school)state.school=full.school;
+        if(full.domains)DOMAINS.forEach((_,di)=>{if(full.domains[di]&&!data['d'+di])state.domains[di]=full.domains[di];});
       }
-    }catch(e){
-      // Timeout or network error — fall through to local
+      initState();
+      return;
     }
+    // Symbol not found in cloud — new school, start fresh
+    initState();
+  }catch(e){
+    // Network error
+    if(errEl)errEl.textContent='⚠️ אין חיבור לאינטרנט. בדוק/י את החיבור ונסה/י שוב.';
+    throw e; // propagate to openMainWithSymbol
   }
-  // Fallback to local
-  try{const r=localStorage.getItem(localKey);if(r){state=JSON.parse(r);initState();return;}}catch(e){}
-  try{const r=localStorage.getItem(STORE_KEY);if(r){state=JSON.parse(r);initState();return;}}catch(e){}
-  initState();
 }
 
 function getCode(){return localStorage.getItem(CODE_KEY)||null;}
@@ -484,7 +479,9 @@ async function openMainWithSymbol(sym){
   try{
     await loadData();
   }catch(e){
-    initState();
+    // Network error — stay on lock screen, error already shown
+    currentSymbol='';
+    return;
   }
   if(!state.school.symbol)state.school.symbol=sym;
   const lock=document.getElementById('lock-screen');
@@ -734,7 +731,9 @@ function populateSchool(){
 }
 
 function autoSave(){
-  try{collectCurrentSection();collectSchool();const k=STORE_KEY+"_"+currentSymbol;localStorage.setItem(k,JSON.stringify(state));}catch(e){}
+  if(!currentSymbol)return;
+  try{collectCurrentSection();collectSchool();}catch(e){}
+  saveData();
 }
 
 function showToast(msg){
