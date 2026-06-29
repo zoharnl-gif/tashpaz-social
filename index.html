@@ -399,7 +399,6 @@ function saveData(){
 
 async function loadData(){
   if(!currentSymbol){initState();return;}
-  const errEl=document.getElementById('code-err');
   try{
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),8000);
@@ -435,12 +434,11 @@ async function loadData(){
       initState();
       return;
     }
-    // Symbol not found in cloud — new school, start fresh
+    // Symbol not found — new school
     initState();
   }catch(e){
-    // Network error
-    if(errEl)errEl.textContent='⚠️ אין חיבור לאינטרנט. בדוק/י את החיבור ונסה/י שוב.';
-    throw e; // propagate to openMainWithSymbol
+    // Network error or CORS — start fresh (no local fallback)
+    initState();
   }
 }
 
@@ -476,13 +474,7 @@ async function openMainWithSymbol(sym){
   currentSymbol=sym;
   const errEl=document.getElementById('code-err');
   if(errEl)errEl.textContent='⏳ טוען נתונים...';
-  try{
-    await loadData();
-  }catch(e){
-    // Network error — stay on lock screen, error already shown
-    currentSymbol='';
-    return;
-  }
+  await loadData();
   if(!state.school.symbol)state.school.symbol=sym;
   const lock=document.getElementById('lock-screen');
   const main=document.getElementById('main-screen');
