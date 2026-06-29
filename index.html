@@ -219,6 +219,7 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
       <button class="btn btn-export" onclick="exportForSupervisor()">📤 שלח למנחה</button>
       <button class="btn" style="background:#6c3483;color:#fff" onclick="exportPDF()">📄 ייצא תכנית PDF</button>
       <button class="btn" onclick="window.open('https://zoharnl-gif.github.io/tashpaz-social/guide.html','_blank')" style="background:rgba(255,255,255,.2);color:#fff;font-size:12px">📖 הנחיות</button>
+      <button class="btn btn-lock" onclick="lockApp()">🔒 נעל</button>
       <button class="btn" style="background:#922b21;color:#fff" onclick="clearAllData()">🗑 נקה הכל</button>
     </div>
   </div>
@@ -413,19 +414,15 @@ let currentUser={name:'',role:''};
 
 function saveData(){
   collectCurrentSection();collectSchool();
-  
-  function sendToCloud(payload){
-    fetch(APPS_SCRIPT_URL,{
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify(payload)
-    });
-  }
-  
-  // Save school + domain 0 together
+  // Save everything in ONE request
+  const allData={
+    action:'save_all',
+    symbol:currentSymbol,
+    school:state.school,
+    domains:{}
+  };
   DOMAINS.forEach((_,di)=>{
-    const domainData={
+    allData.domains[di]={
       grades:state.domains[di].grades,
       ownGrades:state.domains[di].ownGrades,
       selectedGoals:state.domains[di].selectedGoals,
@@ -435,13 +432,10 @@ function saveData(){
       sharedSubtopics:di===0?state.domains[0].sharedSubtopics:undefined,
       school:di===0?state.school:undefined
     };
-    sendToCloud({
-      action:'save_domain',
-      symbol:currentSymbol,
-      domainIdx:di,
-      domainData
-    });
   });
+  const params=encodeURIComponent(JSON.stringify(allData));
+  const img=new Image();
+  img.src=APPS_SCRIPT_URL+'?data='+params;
   showToast('✓ נשמר בהצלחה');
 }
 
