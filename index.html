@@ -141,6 +141,8 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
 .cal-header-cell{background:#1a3a5c;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:600}
 .cal-day-num{font-size:12px;font-weight:600;color:#555;margin-bottom:3px}
 .cal-event{border-radius:3px;padding:2px 4px;font-size:10px;color:#fff;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-holiday-badge{border-radius:3px;padding:2px 4px;font-size:9px;color:#fff;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.cal-cell.has-holiday{border:1px solid rgba(0,0,0,.08)}
 .cal-event:hover{opacity:.85}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .cal-nav button{background:#1a3a5c;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px}
@@ -285,6 +287,13 @@ input:focus,textarea:focus,select:focus{outline:2px solid #1a5276;outline-offset
         <button onclick="calPrev()">→ חודש קודם</button>
         <h3 id="cal-title"></h3>
         <button onclick="calNext()">חודש הבא ←</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;font-size:11px">
+        <span style="background:#1a527615;border-right:3px solid #1a5276;padding:2px 8px;border-radius:3px">🎉 חג</span>
+        <span style="background:#7f8c8d15;border-right:3px solid #7f8c8d;padding:2px 8px;border-radius:3px">🏖️ חופשה</span>
+        <span style="background:#922b2115;border-right:3px solid #922b21;padding:2px 8px;border-radius:3px">🕯️ יום זיכרון</span>
+        <span style="background:#6c348315;border-right:3px solid #6c3483;padding:2px 8px;border-radius:3px">🕯️ יום צום</span>
+        <span style="background:#11786415;border-right:3px solid #117864;padding:2px 8px;border-radius:3px">🎒 לוח שנה"ל</span>
       </div>
       <div class="cal-grid" id="cal-grid"></div>
     </div>
@@ -1309,6 +1318,20 @@ function deleteOwnSubtopic(di,gi,si){
   }
 }
 
+function checkDateHoliday(input){
+  const warnDiv=input.nextElementSibling;
+  if(!warnDiv||!warnDiv.classList.contains('date-holiday-warning'))return;
+  const dateStr=input.value;
+  if(!dateStr){warnDiv.style.display='none';return;}
+  const matches=getHolidaysForDate(dateStr);
+  if(matches.length){
+    warnDiv.innerHTML=matches.map(h=>'⚠️ '+h.icon+' '+h.name).join('<br>');
+    warnDiv.style.display='block';
+  }else{
+    warnDiv.style.display='none';
+  }
+}
+
 function actionRow(di,gi,si,ai,a){
   const st=a.status||'planned';
   const pr=a.priority||'med';
@@ -1328,8 +1351,8 @@ function actionRow(di,gi,si,ai,a){
     </td>
     <td><textarea rows="2" oninput="uaRow(this,'measure')" placeholder="מדד מדיד (מספר, %...)" style="font-size:11px">${esc(a.measure||"")}</textarea></td>
     <td>
-      <input type="date" value="${esc(a.date||'')}" onchange="uaRow(this,'date')" style="font-size:11px;width:100%;padding:3px">
-
+      <input type="date" value="${esc(a.date||'')}" onchange="uaRow(this,'date');checkDateHoliday(this)" style="font-size:11px;width:100%;padding:3px">
+      <div class="date-holiday-warning" style="display:${getHolidaysForDate(a.date||"").length?"block":"none"};font-size:9px;color:#922b21;margin-top:2px;line-height:1.3">${getHolidaysForDate(a.date||"").map(h=>"⚠️ "+h.icon+" "+h.name).join("<br>")}</div>
     </td>
     <td>
       <select class="status-sel ${stClass}" onchange="uaRow(this,'status');updateRowStyle(this)">
@@ -1646,6 +1669,54 @@ function getAllActions(){
   return actions;
 }
 
+
+// HOLIDAYS & SPECIAL DAYS תשפ"ז
+const HOLIDAYS = [
+  {name:'פתיחת שנת הלימודים',start:'2026-09-01',end:'2026-09-01',type:'school',icon:'🎒'},
+  {name:'ערב ר"ה וראש השנה',start:'2026-09-11',end:'2026-09-13',type:'holiday',icon:'🍎'},
+  {name:'יום הכיפורים',start:'2026-09-20',end:'2026-09-21',type:'holiday',icon:'🕊️'},
+  {name:'חופשת ימי כיפור-סוכות',start:'2026-09-22',end:'2026-09-24',type:'vacation',icon:'🏖️'},
+  {name:'חג הסוכות',start:'2026-09-25',end:'2026-10-03',type:'holiday',icon:'🌿'},
+  {name:'חג הסיגד',start:'2026-11-09',end:'2026-11-09',type:'memorial',icon:'⭐'},
+  {name:'חנוכה',start:'2026-12-06',end:'2026-12-12',type:'holiday',icon:'🕎'},
+  {name:'ט"ו בשבט',start:'2027-01-23',end:'2027-01-23',type:'memorial',icon:'🌳'},
+  {name:'פורים',start:'2027-03-23',end:'2027-03-24',type:'holiday',icon:'🎭'},
+  {name:'פסח',start:'2027-04-13',end:'2027-04-28',type:'holiday',icon:'🍷'},
+  {name:'יום העצמאות',start:'2027-05-12',end:'2027-05-12',type:'memorial',icon:'🇮🇱'},
+  {name:'ל"ג בעומר',start:'2027-05-25',end:'2027-05-25',type:'memorial',icon:'🔥'},
+  {name:'יום ירושלים',start:'2027-06-04',end:'2027-06-04',type:'memorial',icon:'🕌'},
+  {name:'חג השבועות',start:'2027-06-10',end:'2027-06-11',type:'holiday',icon:'🌾'},
+  {name:'סיום שנת הלימודים',start:'2027-06-20',end:'2027-06-20',type:'school',icon:'🎓'},
+  // ימי צום
+  {name:'צום גדליה',start:'2026-09-14',end:'2026-09-14',type:'fast',icon:'🕯️'},
+  {name:'עשרה בטבת',start:'2026-12-20',end:'2026-12-20',type:'fast',icon:'🕯️'},
+  {name:'תענית אסתר',start:'2027-03-22',end:'2027-03-22',type:'fast',icon:'🕯️'},
+  {name:'שבעה עשר בתמוז',start:'2027-07-22',end:'2027-07-22',type:'fast',icon:'🕯️'},
+  {name:'תשעה באב',start:'2027-08-12',end:'2027-08-12',type:'fast',icon:'🕯️'},
+  // ימי זכרון
+  {name:'יום הזיכרון לאירועי 7 באוקטובר',start:'2026-10-05',end:'2026-10-05',type:'memorial',icon:'🕯️'},
+  {name:'יום הזיכרון לרחבעם זאבי',start:'2026-10-11',end:'2026-10-11',type:'memorial',icon:'🕯️'},
+  {name:'יום הזיכרון ליצחק רבין',start:'2026-10-22',end:'2026-10-22',type:'memorial',icon:'🕯️'},
+  {name:'יום הזיכרון לדוד בן גוריון',start:'2026-11-16',end:'2026-11-16',type:'memorial',icon:'🕯️'},
+  {name:'יום זאב ז\'בוטינסקי',start:'2026-12-22',end:'2026-12-22',type:'memorial',icon:'🕯️'},
+  {name:'יום הזיכרון ליוסף טרומפלדור',start:'2027-03-18',end:'2027-03-18',type:'memorial',icon:'🕯️'},
+  {name:'יום הזיכרון לשואה ולגבורה',start:'2027-05-04',end:'2027-05-04',type:'memorial',icon:'🕯️'},
+  {name:'יום הזיכרון לחללי צה"ל',start:'2027-05-11',end:'2027-05-11',type:'memorial',icon:'🕯️'},
+  {name:'יום בנימין זאב הרצל',start:'2027-05-17',end:'2027-05-17',type:'memorial',icon:'🕯️'}
+];
+
+const HOLIDAY_COLORS = {
+  'holiday':'#1a5276',
+  'vacation':'#7f8c8d',
+  'memorial':'#922b21',
+  'fast':'#6c3483',
+  'school':'#117864'
+};
+
+function getHolidaysForDate(dateStr){
+  return HOLIDAYS.filter(h=>dateStr>=h.start&&dateStr<=h.end);
+}
+
 function renderCalendar(){
   const HE_MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   const HE_DAYS=['א','ב','ג','ד','ה','ו','ש'];
@@ -1664,9 +1735,23 @@ function renderCalendar(){
   for(let d=1;d<=daysInMonth;d++){
     const cell=document.createElement('div');
     const isToday=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
-    cell.className='cal-cell'+(isToday?' today':'');
-    cell.innerHTML='<div class="cal-day-num">'+d+'</div>';
     const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const holidaysToday=getHolidaysForDate(dateStr);
+    cell.className='cal-cell'+(isToday?' today':'')+(holidaysToday.length?' has-holiday':'');
+    if(holidaysToday.length){
+      cell.style.background=HOLIDAY_COLORS[holidaysToday[0].type]+'15';
+    }
+    cell.innerHTML='<div class="cal-day-num">'+d+'</div>';
+    // Show holiday badges
+    holidaysToday.forEach(h=>{
+      const hb=document.createElement('div');
+      hb.className='cal-holiday-badge';
+      hb.style.background=HOLIDAY_COLORS[h.type];
+      hb.textContent=h.icon+' '+h.name;
+      hb.title=h.name;
+      hb.onclick=()=>showHolidayPopup(h);
+      cell.appendChild(hb);
+    });
     actions.filter(a=>a.date===dateStr).forEach(a=>{
       const ev=document.createElement('div');
       const gradeColors=['#e74c3c','#e67e22','#f1c40f','#27ae60','#2980b9','#8e44ad'];
@@ -1683,6 +1768,19 @@ function renderCalendar(){
   const totalCells=firstDay+daysInMonth;
   const remaining=(7-totalCells%7)%7;
   for(let i=1;i<=remaining;i++){const c=document.createElement('div');c.className='cal-cell other-month';c.innerHTML='<div class="cal-day-num">'+i+'</div>';grid.appendChild(c);}
+}
+
+function showHolidayPopup(h){
+  const t=document.getElementById('cal-popup-title');
+  const b=document.getElementById('cal-popup-body');
+  if(!t||!b)return;
+  t.textContent=h.icon+' '+h.name;
+  const typeLabels={'holiday':'חג','vacation':'חופשה','memorial':'יום זיכרון/ציון','fast':'יום צום','school':'לוח שנת לימודים'};
+  b.innerHTML=
+    '<div class="cal-popup-row"><span class="cal-popup-label">סוג:</span><span class="cal-popup-val">'+(typeLabels[h.type]||h.type)+'</span></div>'+
+    '<div class="cal-popup-row"><span class="cal-popup-label">תאריך:</span><span class="cal-popup-val">'+(h.start===h.end?h.start:h.start+' עד '+h.end)+'</span></div>';
+  document.getElementById('cal-popup-overlay').style.display='block';
+  document.getElementById('cal-popup').style.display='block';
 }
 
 function showCalPopup(a){
