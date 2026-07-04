@@ -424,20 +424,18 @@ let currentUser={name:'',role:''};
 function saveData(){
   collectCurrentSection();collectSchool();
   
-  function sendJSONP(payload, cb){
-    const s=document.createElement('script');
-    const cbName='scb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    window[cbName]=function(){delete window[cbName];if(s.parentNode)s.parentNode.removeChild(s);if(cb)cb();};
-    setTimeout(()=>{if(window[cbName]){delete window[cbName];if(s.parentNode)s.parentNode.removeChild(s);}},8000);
-    s.src=APPS_SCRIPT_URL+'?data='+encodeURIComponent(JSON.stringify(payload))+'&callback='+cbName;
-    document.head.appendChild(s);
+  function sendToCloud(payload){
+    fetch(APPS_SCRIPT_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(payload)
+    });
   }
 
-  // Show toast immediately
   showToast('⏳ שומר...');
-  
-  // Save domain 0 (with school + sharedSubtopics) 
-  sendJSONP({
+
+  sendToCloud({
     action:'save_domain',symbol:currentSymbol,domainIdx:0,
     domainData:{
       grades:state.domains[0].grades,
@@ -449,12 +447,11 @@ function saveData(){
       sharedSubtopics:state.domains[0].sharedSubtopics,
       school:state.school
     }
-  }, null);
+  });
 
-  // Save remaining domains
   DOMAINS.forEach((_,di)=>{
     if(di===0)return;
-    sendJSONP({
+    sendToCloud({
       action:'save_domain',symbol:currentSymbol,domainIdx:di,
       domainData:{
         grades:state.domains[di].grades,
@@ -464,11 +461,10 @@ function saveData(){
         selectedOutcomes:state.domains[di].selectedOutcomes,
         customOutcomes:state.domains[di].customOutcomes
       }
-    }, null);
+    });
   });
 
-  // Show success after 3 seconds
-  setTimeout(()=>showToast('✓ נשמר בהצלחה'), 3000);
+  setTimeout(()=>showToast('✓ נשמר בהצלחה'),2000);
 }
 
 async function loadData(){
