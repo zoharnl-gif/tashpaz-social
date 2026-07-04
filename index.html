@@ -435,33 +435,61 @@ function saveData(){
 
   showToast('⏳ שומר...');
 
-  sendToCloud({
-    action:'save_domain',symbol:currentSymbol,domainIdx:0,
-    domainData:{
-      grades:state.domains[0].grades,
-      ownGrades:state.domains[0].ownGrades,
-      selectedGoals:state.domains[0].selectedGoals,
-      customGoals:state.domains[0].customGoals,
-      selectedOutcomes:state.domains[0].selectedOutcomes,
-      customOutcomes:state.domains[0].customOutcomes,
-      sharedSubtopics:state.domains[0].sharedSubtopics,
-      school:state.school
-    }
-  });
+  const isCoord = currentUser && (
+    currentUser.role === 'רכז/ת חברתי/ת חט"ב' ||
+    currentUser.role === 'רכז/ת חברתי/ת חט"ע'
+  );
 
+  // Extract gradeActions per domain from sharedSubtopics
+  // Each domain saves only ITS OWN gradeActions (keys gi_di where di matches)
+  const sharedForSave = isCoord
+    ? state.domains[0].sharedSubtopics  // coord saves full sharedSubtopics (structure only)
+    : undefined;
+
+  // Save gradeActions for each domain separately
   DOMAINS.forEach((_,di)=>{
-    if(di===0)return;
-    sendToCloud({
-      action:'save_domain',symbol:currentSymbol,domainIdx:di,
-      domainData:{
-        grades:state.domains[di].grades,
-        ownGrades:state.domains[di].ownGrades,
-        selectedGoals:state.domains[di].selectedGoals,
-        customGoals:state.domains[di].customGoals,
-        selectedOutcomes:state.domains[di].selectedOutcomes,
-        customOutcomes:state.domains[di].customOutcomes
-      }
+    // Extract only this domain's gradeActions from each shared subtopic
+    const domainGradeActions = {};
+    (state.domains[0].sharedSubtopics||[]).forEach((st,si)=>{
+      if(!st.gradeActions)return;
+      domainGradeActions[si]={};
+      GRADES.forEach((_,gi)=>{
+        const key=gi+'_'+di;
+        if(st.gradeActions[key]&&st.gradeActions[key].length>0){
+          domainGradeActions[si][key]=st.gradeActions[key];
+        }
+      });
     });
+
+    if(di===0){
+      sendToCloud({
+        action:'save_domain',symbol:currentSymbol,domainIdx:0,
+        domainData:{
+          grades:state.domains[0].grades,
+          ownGrades:state.domains[0].ownGrades,
+          selectedGoals:state.domains[0].selectedGoals,
+          customGoals:state.domains[0].customGoals,
+          selectedOutcomes:state.domains[0].selectedOutcomes,
+          customOutcomes:state.domains[0].customOutcomes,
+          sharedSubtopics:sharedForSave,
+          sharedGradeActions:domainGradeActions,
+          school:state.school
+        }
+      });
+    }else{
+      sendToCloud({
+        action:'save_domain',symbol:currentSymbol,domainIdx:di,
+        domainData:{
+          grades:state.domains[di].grades,
+          ownGrades:state.domains[di].ownGrades,
+          selectedGoals:state.domains[di].selectedGoals,
+          customGoals:state.domains[di].customGoals,
+          selectedOutcomes:state.domains[di].selectedOutcomes,
+          customOutcomes:state.domains[di].customOutcomes,
+          sharedGradeActions:domainGradeActions
+        }
+      });
+    }
   });
 
   setTimeout(()=>showToast('✓ נשמר בהצלחה'),2000);
@@ -497,6 +525,20 @@ async function loadData(){
             if(di===0&&data[key].sharedSubtopics)state.domains[0].sharedSubtopics=data[key].sharedSubtopics;
             // Load school from domain 0
             if(di===0&&data[key].school)state.school=data[key].school;
+          }
+        });
+        // Second pass: merge sharedGradeActions from all domains
+        DOMAINS.forEach((_,di)=>{
+          const key='d'+di;
+          if(data[key]&&data[key].sharedGradeActions){
+            const sga=data[key].sharedGradeActions;
+            Object.keys(sga).forEach(siStr=>{
+              const si=parseInt(siStr);
+              const st=state.domains[0].sharedSubtopics?.[si];
+              if(!st)return;
+              if(!st.gradeActions)st.gradeActions={};
+              Object.assign(st.gradeActions, sga[siStr]);
+            });
           }
         });
         if(data.full){
