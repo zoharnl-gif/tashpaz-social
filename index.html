@@ -433,6 +433,9 @@ function saveData(){
     document.head.appendChild(s);
   }
 
+  // Show toast immediately
+  showToast('⏳ שומר...');
+  
   // Save domain 0 (with school + sharedSubtopics) 
   sendJSONP({
     action:'save_domain',symbol:currentSymbol,domainIdx:0,
@@ -446,23 +449,26 @@ function saveData(){
       sharedSubtopics:state.domains[0].sharedSubtopics,
       school:state.school
     }
-  }, ()=>{
-    // After domain 0 saved, save rest and update summary
-    DOMAINS.forEach((_,di)=>{
-      if(di===0)return;
-      sendJSONP({
-        action:'save_domain',symbol:currentSymbol,domainIdx:di,
-        domainData:{
-          grades:state.domains[di].grades,
-          ownGrades:state.domains[di].ownGrades,
-          selectedGoals:state.domains[di].selectedGoals,
-          customGoals:state.domains[di].customGoals,
-          selectedOutcomes:state.domains[di].selectedOutcomes,
-          customOutcomes:state.domains[di].customOutcomes
-        }
-      }, di===DOMAINS.length-1?()=>showToast('✓ נשמר בהצלחה'):null);
-    });
+  }, null);
+
+  // Save remaining domains
+  DOMAINS.forEach((_,di)=>{
+    if(di===0)return;
+    sendJSONP({
+      action:'save_domain',symbol:currentSymbol,domainIdx:di,
+      domainData:{
+        grades:state.domains[di].grades,
+        ownGrades:state.domains[di].ownGrades,
+        selectedGoals:state.domains[di].selectedGoals,
+        customGoals:state.domains[di].customGoals,
+        selectedOutcomes:state.domains[di].selectedOutcomes,
+        customOutcomes:state.domains[di].customOutcomes
+      }
+    }, null);
   });
+
+  // Show success after 3 seconds
+  setTimeout(()=>showToast('✓ נשמר בהצלחה'), 3000);
 }
 
 async function loadData(){
@@ -701,13 +707,14 @@ function buildPDFContent(){
     GRADES.forEach((g,gi)=>{
       let gradeHTML='';
 
-      // Shared subtopics
+      // Shared subtopics - only show if this domain (di) has actions for this grade
       shared.forEach((st,si)=>{
         const scope=st.scope||'all';
         const vis=scope==='all'||(scope==='selected'&&(st.selectedGrades||[]).includes(gi));
         if(!vis)return;
+        // Only show in domain di if di actually added actions (key = gi_di)
         const actions=((st.gradeActions&&st.gradeActions[gi+'_'+di])||[]).filter(a=>a.name);
-        if(!actions.length)return;
+        if(!actions.length)return; // skip if no actions from this domain
         gradeHTML+='<div class="subtopic-title">📌 '+esc(st.name||'')+'</div>';
         gradeHTML+='<table><tr><th style="width:22%">פעולה</th><th style="width:10%">אחראי</th><th style="width:14%">שותפים</th><th style="width:16%">תוצאה מצופה</th><th style="width:8%">מועד</th><th style="width:8%">סטטוס</th><th style="width:7%">עדיפות</th><th style="width:14%">מימון (גפן/הורים/אחר)</th></tr>';
         actions.forEach(a=>{
