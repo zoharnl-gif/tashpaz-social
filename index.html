@@ -706,7 +706,7 @@ function buildPDFContent(){
         const scope=st.scope||'all';
         const vis=scope==='all'||(scope==='selected'&&(st.selectedGrades||[]).includes(gi));
         if(!vis)return;
-        const actions=((st.gradeActions&&st.gradeActions[gi])||[]).filter(a=>a.name);
+        const actions=((st.gradeActions&&st.gradeActions[gi+'_'+di])||[]).filter(a=>a.name);
         if(!actions.length)return;
         gradeHTML+='<div class="subtopic-title">📌 '+esc(st.name||'')+'</div>';
         gradeHTML+='<table><tr><th style="width:22%">פעולה</th><th style="width:10%">אחראי</th><th style="width:14%">שותפים</th><th style="width:16%">תוצאה מצופה</th><th style="width:8%">מועד</th><th style="width:8%">סטטוס</th><th style="width:7%">עדיפות</th><th style="width:14%">מימון (גפן/הורים/אחר)</th></tr>';
@@ -1058,7 +1058,7 @@ function renderGradeContent(di,gi){
           <th style="width:3%"></th>
         </tr></thead>
         <tbody id="tbody-${di}-${gi}-s${si}">
-        ${((st.gradeActions&&st.gradeActions[gi])||st.actions||[]).map((a,ai)=>actionRow(di,gi,'s'+si,ai,a)).join('')}
+        ${((st.gradeActions&&st.gradeActions[gi+'_'+di])||[]).map((a,ai)=>actionRow(di,gi,'s'+si,ai,a)).join('')}
         </tbody>
       </table>
       `;
@@ -1287,9 +1287,11 @@ function toggleGradeScope(di,gi,si,gIdx,checked){
 function addActionShared(di,gi,si){
   collectCurrentSection();
   if(!state.domains[0].sharedSubtopics[si])return;
-  if(!state.domains[0].sharedSubtopics[si].gradeActions)state.domains[0].sharedSubtopics[si].gradeActions={};
-  if(!state.domains[0].sharedSubtopics[si].gradeActions[gi])state.domains[0].sharedSubtopics[si].gradeActions[gi]=[];
-  state.domains[0].sharedSubtopics[si].gradeActions[gi].push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:''});
+  const st=state.domains[0].sharedSubtopics[si];
+  if(!st.gradeActions)st.gradeActions={};
+  const gKey=gi+'_'+di; // grade+domain composite key
+  if(!st.gradeActions[gKey])st.gradeActions[gKey]=[];
+  st.gradeActions[gKey].push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:''});
   renderGradeContent(di,gi);
 }
 function addActionOwn(di,gi,si){
@@ -1409,6 +1411,26 @@ function uaRow(el,field){
   ua(di,gi,si,ai,field,el.value);
 }
 
+function deleteAction(di,gi,si,ai){
+  if(typeof si==='string'&&(si[0]==='s'||si[0]==='o')){
+    const prefix=si[0];const idx=parseInt(si.slice(1));
+    if(prefix==='s'){
+      const st=state.domains[0].sharedSubtopics?.[idx];
+      if(st&&st.gradeActions){
+        const key=gi+'_'+di;
+        const arr=st.gradeActions[key]||[];
+        arr.splice(ai,1);
+        st.gradeActions[key]=arr;
+      }
+    }else{
+      if(state.domains[di].ownGrades?.[gi]?.[idx]?.actions)
+        state.domains[di].ownGrades[gi][idx].actions.splice(ai,1);
+    }
+  }
+  renderGradeContent(di,gi);
+  updateCostTotal();
+}
+
 function deleteActionRow(el){
   const {di,gi,si,ai}=getRowData(el);
   deleteAction(di,gi,si,ai);
@@ -1425,9 +1447,9 @@ function ua(di,gi,si,ai,f,v){
     if(prefix==='s'){
       const st=state.domains[0].sharedSubtopics?.[idx];
       if(st){
-        const arr=(st.gradeActions&&st.gradeActions[gi])||st.actions||[];
+        const arr=(st.gradeActions&&st.gradeActions[gi+'_'+di])||[];
         if(arr[ai])arr[ai][f]=v;
-        if(st.gradeActions)st.gradeActions[gi]=arr;else st.actions=arr;
+        if(!st.gradeActions)st.gradeActions={};st.gradeActions[gi+'_'+di]=arr;
       }
     }else{
       if(state.domains[di].ownGrades?.[gi]?.[idx])
@@ -1476,11 +1498,14 @@ function updateCostTotal(){
 function addToCalendar(di,gi,si,ai){
   // get action from correct source
   let a;
-  if(typeof si==='string'){
+  if(typeof si==='string'&&(si[0]==='s'||si[0]==='o')){
     const prefix=si[0];const idx=parseInt(si.slice(1));
-    a=prefix==='s'?state.domains[0].grades[gi][idx]?.actions[ai]:state.domains[di].ownGrades?.[gi]?.[idx]?.actions[ai];
-  }else{
-    a=state.domains[di].grades[gi][si]?.actions[ai];
+    if(prefix==='s'){
+      const st=state.domains[0].sharedSubtopics?.[idx];
+      a=st?.gradeActions?.[gi+'_'+di]?.[ai];
+    }else{
+      a=state.domains[di].ownGrades?.[gi]?.[idx]?.actions?.[ai];
+    }
   }
   if(!a||!a.name||!a.date){alert('נא למלא שם פעולה ותאריך לפני הוספה ל-Calendar');return;}
   const school=state.school.name||'בית הספר';
@@ -1526,8 +1551,9 @@ function collectCurrentSection(){
       const st=state.domains[0].sharedSubtopics?.[si];
       if(!st)return;
       if(!st.gradeActions)st.gradeActions={};
-      if(!st.gradeActions[gi])st.gradeActions[gi]=[];
-      actionArr=st.gradeActions[gi];
+      const gKey2=gi+'_'+di;
+      if(!st.gradeActions[gKey2])st.gradeActions[gKey2]=[];
+      actionArr=st.gradeActions[gKey2];
     }else{
       // own — stored in domain di ownGrades
       if(!state.domains[di].ownGrades?.[gi]?.[si])return;
@@ -1624,7 +1650,7 @@ function renderView(){
         const scope=st.scope||'all';
         const vis=scope==='all'||(scope==='selected'&&(st.selectedGrades||[]).includes(gi));
         if(!vis)return;
-        const acts=(st.gradeActions&&st.gradeActions[gi])||[];
+        const acts=(st.gradeActions&&st.gradeActions[gi+'_'+di])||[];
         renderSubtopic(d,di,g,gi,st.name||'',acts,ga,oa);
       });
 
@@ -1648,21 +1674,24 @@ function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalend
 
 function getAllActions(){
   const actions=[];
-  // Shared subtopics (domain 0) - gradeActions per grade — appear in ALL domains
+  // Shared subtopics (domain 0) - gradeActions keyed by gi_di — each action belongs to a specific domain
   const shared=state.domains[0].sharedSubtopics||[];
   shared.forEach(st=>{
     if(!st.gradeActions)return;
-    GRADES.forEach((_,gi)=>{
-      (st.gradeActions[gi]||[]).forEach(a=>{
-        if(a.name&&a.date)actions.push({...a,domain:'משותף: '+st.name,color:DOMAINS[0].color,grade:GRADES[gi],subtopic:st.name||''});
+    DOMAINS.forEach((d,di)=>{
+      GRADES.forEach((g,gi)=>{
+        const key=gi+'_'+di;
+        (st.gradeActions[key]||[]).forEach(a=>{
+          if(a.name&&a.date)actions.push({...a,domain:d.name,color:d.color,grade:g,subtopic:st.name||''});
+        });
       });
     });
   });
   // All domains - ownGrades
   DOMAINS.forEach((d,di)=>{
-    GRADES.forEach((_,gi)=>{
+    GRADES.forEach((g,gi)=>{
       (state.domains[di].ownGrades?.[gi]||[]).forEach(st=>{
-        (st.actions||[]).forEach(a=>{if(a.name&&a.date)actions.push({...a,domain:d.name,color:d.color,grade:GRADES[gi],subtopic:st.name||''});});
+        (st.actions||[]).forEach(a=>{if(a.name&&a.date)actions.push({...a,domain:d.name,color:d.color,grade:g,subtopic:st.name||''});});
       });
     });
   });
