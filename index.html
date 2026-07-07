@@ -528,6 +528,10 @@ async function loadData(){
           }
         });
         // Second pass: merge sharedGradeActions from all domains
+        // Also ensure school data is loaded from d0 even for non-coord roles
+        if(!state.school.name && data.d0 && data.d0.school){
+          state.school = data.d0.school;
+        }
         DOMAINS.forEach((_,di)=>{
           const key='d'+di;
           if(data[key]&&data[key].sharedGradeActions){
