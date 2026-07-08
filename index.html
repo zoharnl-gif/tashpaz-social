@@ -348,7 +348,7 @@ function getDefaultDomain(){
   return allowed[0]||0;
 }
 
-const GRADES=["ז׳","ח׳","ט׳","י׳","י\"א","י\"ב"];
+const GRADES=["ז׳","ח׳","ט׳","י׳","י\"א","י\"ב","י\"ג+"];
 const STORE_KEY="tspz_plan_v4";
 const CODE_KEY="tspz_code_v3";
 const SEC_KEY="tspz_sec_v3";
@@ -767,7 +767,8 @@ function buildPDFContent(){
           totalCost+=cost;
           const stL={'planned':'מתוכנן','active':'בביצוע','done':'הושלם'};
           const prL={'high':'גבוהה','med':'בינונית','low':'נמוכה'};
-          gradeHTML+='<tr><td>'+esc(a.name)+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(prL[a.priority]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
+          const extraGradesStr=(a.extraGrades&&a.extraGrades.length)?a.extraGrades.map(gix=>GRADES[gix]).join(', '):'';
+          gradeHTML+='<tr><td>'+esc(a.name)+(extraGradesStr?'<br><span style="font-size:9px;color:#888">גם: '+extraGradesStr+'</span>':'')+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(prL[a.priority]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
         });
         gradeHTML+='</table>';
       });
@@ -786,7 +787,8 @@ function buildPDFContent(){
           totalCost+=cost;
           const stL={'planned':'מתוכנן','active':'בביצוע','done':'הושלם'};
           const prL={'high':'גבוהה','med':'בינונית','low':'נמוכה'};
-          gradeHTML+='<tr><td>'+esc(a.name)+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(prL[a.priority]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
+          const extraGradesStr=(a.extraGrades&&a.extraGrades.length)?a.extraGrades.map(gix=>GRADES[gix]).join(', '):'';
+          gradeHTML+='<tr><td>'+esc(a.name)+(extraGradesStr?'<br><span style="font-size:9px;color:#888">גם: '+extraGradesStr+'</span>':'')+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(prL[a.priority]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
         });
         gradeHTML+='</table>';
       });
@@ -1340,18 +1342,18 @@ function addActionShared(di,gi,si){
   if(!st.gradeActions)st.gradeActions={};
   const gKey=gi+'_'+di; // grade+domain composite key
   if(!st.gradeActions[gKey])st.gradeActions[gKey]=[];
-  st.gradeActions[gKey].push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:''});
+  st.gradeActions[gKey].push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:'',extraGrades:[]});
   renderGradeContent(di,gi);
 }
 function addActionOwn(di,gi,si){
   collectCurrentSection();
   if(!state.domains[di].ownGrades[gi][si].actions)state.domains[di].ownGrades[gi][si].actions=[];
-  state.domains[di].ownGrades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:''});
+  state.domains[di].ownGrades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:'',extraGrades:[]});
   renderGradeContent(di,gi);
 }
 function addAction(di,gi,si){
   collectCurrentSection();
-  state.domains[di].grades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:''});
+  state.domains[di].grades[gi][si].actions.push({name:'',resp:'',part:'',outcome:'',date:'',status:'planned',priority:'med',cost:'',prep:'',notes:'',feedback:'',fundGafen:'',fundParents:'',fundOther:'',fundOtherDesc:'',payStatus:'',extraGrades:[]});
   renderGradeContent(di,gi);
 }
 function addOwnSubtopic(di,gi){
@@ -1367,6 +1369,37 @@ function deleteOwnSubtopic(di,gi,si){
     state.domains[di].ownGrades[gi].splice(si,1);
     renderGradeContent(di,gi);
   }
+}
+
+function uaRowGrade(cb, field, gix){
+  const tr=cb.closest('tr');
+  if(!tr)return;
+  const si=tr.dataset.si;
+  const ai=parseInt(tr.dataset.ai);
+  const di=parseInt(tr.dataset.di);
+  const gi=parseInt(tr.dataset.gi);
+  let actionArr=null;
+  if(typeof si==='string'&&si[0]==='s'){
+    const idx=parseInt(si.slice(1));
+    const st=state.domains[0].sharedSubtopics?.[idx];
+    if(st){
+      const key=gi+'_'+di;
+      if(!st.gradeActions)st.gradeActions={};
+      if(!st.gradeActions[key])st.gradeActions[key]=[];
+      actionArr=st.gradeActions[key];
+    }
+  }else if(typeof si==='string'&&si[0]==='o'){
+    const idx=parseInt(si.slice(1));
+    actionArr=state.domains[di].ownGrades?.[gi]?.[idx]?.actions;
+  }
+  if(!actionArr||!actionArr[ai])return;
+  if(!actionArr[ai].extraGrades)actionArr[ai].extraGrades=[];
+  if(cb.checked){
+    if(!actionArr[ai].extraGrades.includes(gix))actionArr[ai].extraGrades.push(gix);
+  }else{
+    actionArr[ai].extraGrades=actionArr[ai].extraGrades.filter(x=>x!==gix);
+  }
+  autoSave();
 }
 
 function checkDateHoliday(input){
@@ -1404,6 +1437,8 @@ function actionRow(di,gi,si,ai,a){
     <td>
       <input type="date" value="${esc(a.date||'')}" onchange="uaRow(this,'date');checkDateHoliday(this)" style="font-size:11px;width:100%;padding:3px">
       <div class="date-holiday-warning" style="display:${getHolidaysForDate(a.date||"").length?"block":"none"};font-size:9px;color:#922b21;margin-top:2px;line-height:1.3">${getHolidaysForDate(a.date||"").map(h=>"⚠️ "+h.icon+" "+h.name).join("<br>")}</div>
+      <div style="font-size:9px;color:#888;margin-top:3px">שכבות נוספות:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px">${GRADES.map((g,gix)=>`<label style="font-size:9px;display:flex;align-items:center;gap:1px"><input type="checkbox" ${((a.extraGrades||[]).includes(gix))?"checked":""} onchange="uaRowGrade(this,'extraGrades',${gix})" style="width:10px;height:10px">${g}</label>`).join("")}</div>
     </td>
     <td>
       <select class="status-sel ${stClass}" onchange="uaRow(this,'status');updateRowStyle(this)">
@@ -1832,7 +1867,7 @@ function renderCalendar(){
     });
     actions.filter(a=>a.date===dateStr).forEach(a=>{
       const ev=document.createElement('div');
-      const gradeColors=['#e74c3c','#e67e22','#f1c40f','#27ae60','#2980b9','#8e44ad'];
+      const gradeColors=['#e74c3c','#e67e22','#f1c40f','#27ae60','#2980b9','#8e44ad','#1abc9c'];
       const gradeIdx=GRADES.indexOf(a.grade);
       const priorDot={'high':'🔴','med':'🟡','low':'🟢'}[a.priority]||'';
       ev.className='cal-event';
