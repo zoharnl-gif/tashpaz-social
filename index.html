@@ -770,7 +770,7 @@ function buildPDFContent(){
           const stL={'planned':'מתוכנן','active':'בביצוע','done':'הושלם'};
           const prL={'high':'גבוהה','med':'בינונית','low':'נמוכה'};
           const extraGradesStr=(a.extraGrades&&a.extraGrades.length)?a.extraGrades.map(gix=>GRADES[gix]).join(', '):'';
-          gradeHTML+='<tr><td>'+esc(a.name)+(extraGradesStr?'<br><span style="font-size:9px;color:#888">גם: '+extraGradesStr+'</span>':'')+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
+          gradeHTML+='<tr><td>'+esc(a.name)+(extraGradesStr?'<br><span style="font-size:9px;color:#888">גם: '+extraGradesStr+'</span>':'')+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+extraGradesStr+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
         });
         gradeHTML+='</table>';
       });
@@ -790,7 +790,7 @@ function buildPDFContent(){
           const stL={'planned':'מתוכנן','active':'בביצוע','done':'הושלם'};
           const prL={'high':'גבוהה','med':'בינונית','low':'נמוכה'};
           const extraGradesStr=(a.extraGrades&&a.extraGrades.length)?a.extraGrades.map(gix=>GRADES[gix]).join(', '):'';
-          gradeHTML+='<tr><td>'+esc(a.name)+(extraGradesStr?'<br><span style="font-size:9px;color:#888">גם: '+extraGradesStr+'</span>':'')+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
+          gradeHTML+='<tr><td>'+esc(a.name)+(extraGradesStr?'<br><span style="font-size:9px;color:#888">גם: '+extraGradesStr+'</span>':'')+'</td><td>'+esc(a.resp||'')+'</td><td>'+esc(a.part||'')+'</td><td>'+esc(a.outcome||'')+'</td><td>'+esc(a.date||'')+'</td><td>'+extraGradesStr+'</td><td>'+(stL[a.status]||'')+'</td><td>'+(cost?'₪'+cost:'')+'</td><td>'+([gafen?'גפן:₪'+gafen:'',parents?'הורים:₪'+parents:'',otherAmt?(a.fundOtherDesc||'אחר')+':₪'+otherAmt:''].filter(Boolean).join(' | ')||esc(a.funding||''))+(a.payStatus?' ('+({'pending':'טרם שולם','paid':'שולם','invoice':'הוגשה חשבונית'}[a.payStatus]||'')+')':'')+'</td></tr>';
         });
         gradeHTML+='</table>';
       });
