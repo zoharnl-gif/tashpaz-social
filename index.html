@@ -758,7 +758,7 @@ function buildPDFContent(){
         const actions=((st.gradeActions&&st.gradeActions[gi+'_'+di])||[]).filter(a=>a.name);
         if(!actions.length)return; // skip if no actions from this domain
         gradeHTML+='<div class="subtopic-title">📌 '+esc(st.name||'')+'</div>';
-        gradeHTML+='<table><tr><th style="width:22%">פעולה</th><th style="width:10%">אחראי</th><th style="width:14%">שותפים</th><th style="width:16%">תוצאה מצופה</th><th style="width:8%">מועד</th><th style="width:8%">סטטוס</th><th style="width:7%">עדיפות</th><th style="width:14%">מימון (גפן/הורים/אחר)</th></tr>';
+        gradeHTML+='<table><tr><th style="width:20%">פעולה</th><th style="width:9%">אחראי</th><th style="width:12%">שותפים</th><th style="width:14%">תוצאה מצופה</th><th style="width:7%">מועד</th><th style="width:9%">שכבות</th><th style="width:7%">סטטוס</th><th style="width:13%">מימון (גפן/הורים/אחר)</th></tr>';
         actions.forEach(a=>{
           const gafen=parseFloat(a.fundGafen)||0;
           const parents=parseFloat(a.fundParents)||0;
@@ -778,7 +778,7 @@ function buildPDFContent(){
         const actions=(st.actions||[]).filter(a=>a.name);
         if(!actions.length)return;
         gradeHTML+='<div class="subtopic-title">🌿 '+esc(st.name||'')+'</div>';
-        gradeHTML+='<table><tr><th style="width:22%">פעולה</th><th style="width:10%">אחראי</th><th style="width:14%">שותפים</th><th style="width:16%">תוצאה מצופה</th><th style="width:8%">מועד</th><th style="width:8%">סטטוס</th><th style="width:7%">עדיפות</th><th style="width:14%">מימון (גפן/הורים/אחר)</th></tr>';
+        gradeHTML+='<table><tr><th style="width:20%">פעולה</th><th style="width:9%">אחראי</th><th style="width:12%">שותפים</th><th style="width:14%">תוצאה מצופה</th><th style="width:7%">מועד</th><th style="width:9%">שכבות</th><th style="width:7%">סטטוס</th><th style="width:13%">מימון (גפן/הורים/אחר)</th></tr>';
         actions.forEach(a=>{
           const gafen=parseFloat(a.fundGafen)||0;
           const parents=parseFloat(a.fundParents)||0;
@@ -1100,8 +1100,8 @@ function renderGradeContent(di,gi){
           <th style="width:12%">תוצאה מצופה</th>
           <th style="width:12%">מדד מדיד</th>
           <th style="width:7%">מועד</th>
+          <th style="width:10%">שכבות נוספות</th>
           <th style="width:7%">סטטוס</th>
-          <th style="width:6%">עדיפות</th>
           <th style="width:9%">היערכות נדרשת</th>
           <th style="width:9%">הערות</th>
           <th style="width:9%">משוב</th>
@@ -1173,8 +1173,8 @@ function renderGradeContent(di,gi){
           <th style="width:12%">תוצאה מצופה</th>
           <th style="width:12%">מדד מדיד</th>
           <th style="width:7%">מועד</th>
+          <th style="width:10%">שכבות נוספות</th>
           <th style="width:7%">סטטוס</th>
-          <th style="width:6%">עדיפות</th>
           <th style="width:9%">היערכות נדרשת</th>
           <th style="width:9%">הערות</th>
           <th style="width:9%">משוב</th>
@@ -1437,8 +1437,10 @@ function actionRow(di,gi,si,ai,a){
     <td>
       <input type="date" value="${esc(a.date||'')}" onchange="uaRow(this,'date');checkDateHoliday(this)" style="font-size:11px;width:100%;padding:3px">
       <div class="date-holiday-warning" style="display:${getHolidaysForDate(a.date||"").length?"block":"none"};font-size:9px;color:#922b21;margin-top:2px;line-height:1.3">${getHolidaysForDate(a.date||"").map(h=>"⚠️ "+h.icon+" "+h.name).join("<br>")}</div>
-      <div style="font-size:9px;color:#888;margin-top:3px">שכבות נוספות:</div>
-      <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px">${GRADES.map((g,gix)=>`<label style="font-size:9px;display:flex;align-items:center;gap:1px"><input type="checkbox" ${((a.extraGrades||[]).includes(gix))?"checked":""} onchange="uaRowGrade(this,'extraGrades',${gix})" style="width:10px;height:10px">${g}</label>`).join("")}</div>
+    </td>
+    <td>
+      <div style="font-size:9px;color:#888;margin-bottom:2px">שכבות:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px">${GRADES.map((g,gix)=>`<label style="font-size:9px;display:flex;align-items:center;gap:1px"><input type="checkbox" ${((a.extraGrades||[]).includes(gix))?"checked":""} onchange="uaRowGrade(this,'extraGrades',${gix})" style="width:10px;height:10px">${g}</label>`).join("")}</div>
     </td>
     <td>
       <select class="status-sel ${stClass}" onchange="uaRow(this,'status');updateRowStyle(this)">
@@ -1705,7 +1707,7 @@ function renderView(){
       html+='<table class="view-table"><thead><tr>';
       html+='<th style="width:22%">פעולה</th><th style="width:11%">אחראי</th>';
       html+='<th style="width:17%">שותפים</th><th style="width:22%">תוצאה</th>';
-      html+='<th style="width:10%">מועד</th><th style="width:10%">סטטוס</th><th style="width:8%">עדיפות</th>';
+      html+='<th style="width:10%">מועד</th><th style="width:12%">שכבות</th><th style="width:10%">סטטוס</th>';
       html+='</tr></thead><tbody>';
       validActs.forEach(a=>{
         html+='<tr>';
