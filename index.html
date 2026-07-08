@@ -551,6 +551,8 @@ async function loadData(){
           if(full.domains)DOMAINS.forEach((_,di)=>{if(full.domains[di]&&!data['d'+di])state.domains[di]=full.domains[di];});
         }
         initState();
+        // Force re-render after merge to show all data
+        setTimeout(()=>{try{renderSection();}catch(e){}},200);
       }else{
         initState();
       }
