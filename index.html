@@ -1094,18 +1094,17 @@ function renderGradeContent(di,gi){
       ${scopeHTML}
       <table class="acts-table">
         <thead><tr>
-          <th style="width:15%">שם הפעולה / האירוע</th>
+          <th style="width:18%">שם הפעולה</th>
           <th style="width:8%">אחראי</th>
-          <th style="width:11%">שותפים וממשקים</th>
-          <th style="width:12%">תוצאה מצופה</th>
-          <th style="width:12%">מדד מדיד</th>
+          <th style="width:10%">שותפים וממשקים</th>
+          <th style="width:14%">תוצאה מצופה / מדד הצלחה</th>
           <th style="width:7%">מועד</th>
           <th style="width:10%">שכבות נוספות</th>
-          <th style="width:7%">סטטוס</th>
+          <th style="width:6%">סטטוס</th>
           <th style="width:9%">היערכות נדרשת</th>
-          <th style="width:9%">הערות</th>
-          <th style="width:9%">משוב</th>
-          <th style="width:14%">מימון (גפן/הורים/אחר)</th>
+          <th style="width:13%">מימון (גפן/הורים/אחר)</th>
+          <th style="width:7%">הערות</th>
+          <th style="width:7%">משוב</th>
           <th style="width:3%"></th>
         </tr></thead>
         <tbody id="tbody-${di}-${gi}-s${si}">
@@ -1167,18 +1166,17 @@ function renderGradeContent(di,gi){
       </div>
       <table class="acts-table">
         <thead><tr>
-          <th style="width:15%">שם הפעולה / האירוע</th>
+          <th style="width:18%">שם הפעולה</th>
           <th style="width:8%">אחראי</th>
-          <th style="width:11%">שותפים וממשקים</th>
-          <th style="width:12%">תוצאה מצופה</th>
-          <th style="width:12%">מדד מדיד</th>
+          <th style="width:10%">שותפים וממשקים</th>
+          <th style="width:14%">תוצאה מצופה / מדד הצלחה</th>
           <th style="width:7%">מועד</th>
           <th style="width:10%">שכבות נוספות</th>
-          <th style="width:7%">סטטוס</th>
+          <th style="width:6%">סטטוס</th>
           <th style="width:9%">היערכות נדרשת</th>
-          <th style="width:9%">הערות</th>
-          <th style="width:9%">משוב</th>
-          <th style="width:14%">מימון (גפן/הורים/אחר)</th>
+          <th style="width:13%">מימון (גפן/הורים/אחר)</th>
+          <th style="width:7%">הערות</th>
+          <th style="width:7%">משוב</th>
           <th style="width:3%"></th>
         </tr></thead>
         <tbody id="tbody-${di}-${gi}-o${si}">
@@ -1427,19 +1425,19 @@ function actionRow(di,gi,si,ai,a){
   const siStr=typeof si==='string'?si:String(si);
   const siAttr=esc(siStr);
   return `<tr data-di="${di}" data-gi="${gi}" data-si="${siAttr}" data-ai="${ai}">
-    <td><textarea rows="2" oninput="uaRow(this,'name')" placeholder="תאר את הפעולה...">${esc(a.name||'')}</textarea></td>
+    <td><textarea rows="2" oninput="uaRow(this,'name')" placeholder="שם הפעולה...">${esc(a.name||'')}</textarea></td>
     <td><input type="text" value="${esc(a.resp||'')}" oninput="uaRow(this,'resp')" placeholder="אחראי/ת"></td>
-    <td><textarea rows="2" oninput="uaRow(this,'part')" placeholder="שותפים...">${esc(a.part||'')}</textarea></td>
+    <td><textarea rows="2" oninput="uaRow(this,'part')" placeholder="שותפים וממשקים...">${esc(a.part||'')}</textarea></td>
     <td>
-      <textarea rows="2" oninput="uaRow(this,'outcome')" placeholder="תאר את התוצאה המצופה...">${esc(a.outcome||'')}</textarea>
+      <textarea rows="2" oninput="uaRow(this,'outcome')" placeholder="תוצאה מצופה..." style="margin-bottom:3px">${esc(a.outcome||'')}</textarea>
+      <textarea rows="2" oninput="uaRow(this,'measure')" placeholder="מדד הצלחה (מספר, %...)" style="font-size:11px;border-top:1px dashed #ddd">${esc(a.measure||"")}</textarea>
     </td>
-    <td><textarea rows="2" oninput="uaRow(this,'measure')" placeholder="מדד מדיד (מספר, %...)" style="font-size:11px">${esc(a.measure||"")}</textarea></td>
     <td>
       <input type="date" value="${esc(a.date||'')}" onchange="uaRow(this,'date');checkDateHoliday(this)" style="font-size:11px;width:100%;padding:3px">
       <div class="date-holiday-warning" style="display:${getHolidaysForDate(a.date||"").length?"block":"none"};font-size:9px;color:#922b21;margin-top:2px;line-height:1.3">${getHolidaysForDate(a.date||"").map(h=>"⚠️ "+h.icon+" "+h.name).join("<br>")}</div>
     </td>
     <td>
-      <div style="font-size:9px;color:#888;margin-bottom:2px">שכבות:</div>
+      <div style="font-size:9px;color:#888;margin-bottom:2px">שכבות נוספות:</div>
       <div style="display:flex;flex-wrap:wrap;gap:2px">${GRADES.map((g,gix)=>`<label style="font-size:9px;display:flex;align-items:center;gap:1px"><input type="checkbox" ${((a.extraGrades||[]).includes(gix))?"checked":""} onchange="uaRowGrade(this,'extraGrades',${gix})" style="width:10px;height:10px">${g}</label>`).join("")}</div>
     </td>
     <td>
@@ -1449,16 +1447,7 @@ function actionRow(di,gi,si,ai,a){
         <option value="done" ${st==='done'?'selected':''}>✅ הושלם</option>
       </select>
     </td>
-    <td>
-      <select class="priority-sel ${prClass}" onchange="uaRow(this,'priority');updateRowStyle(this)">
-        <option value="high" ${pr==='high'?'selected':''}>🔴 גבוהה</option>
-        <option value="med" ${pr==='med'?'selected':''}>🟡 בינונית</option>
-        <option value="low" ${pr==='low'?'selected':''}>🟢 נמוכה</option>
-      </select>
-    </td>
     <td><textarea rows="2" oninput="uaRow(this,'prep')" placeholder="היערכות נדרשת..." style="font-size:11px">${esc(a.prep||'')}</textarea></td>
-    <td><textarea rows="2" oninput="uaRow(this,'notes')" placeholder="הערות..." style="font-size:11px">${esc(a.notes||'')}</textarea></td>
-    <td><textarea rows="2" oninput="uaRow(this,'feedback')" placeholder="משוב לאחר ביצוע..." style="font-size:11px;border:1px dashed #ccc;background:#fffef0">${esc(feedback)}</textarea></td>
     <td style="min-width:120px">
       <div style="font-size:10px;color:#888;margin-bottom:2px">גפן:</div>
       <input type="number" min="0" value="${esc(a.fundGafen||'')}" oninput="uaRow(this,'fundGafen')" placeholder="₪" style="font-size:11px;width:100%;margin-bottom:3px">
@@ -1476,6 +1465,8 @@ function actionRow(di,gi,si,ai,a){
         <option value="invoice" ${a.payStatus==='invoice'?'selected':''}>🧾 הוגשה חשבונית</option>
       </select>
     </td>
+    <td><textarea rows="2" oninput="uaRow(this,'notes')" placeholder="הערות..." style="font-size:11px">${esc(a.notes||'')}</textarea></td>
+    <td><textarea rows="2" oninput="uaRow(this,'feedback')" placeholder="משוב לאחר ביצוע..." style="font-size:11px;border:1px dashed #ccc;background:#fffef0">${esc(feedback)}</textarea></td>
     <td><button class="del-row" onclick="deleteActionRow(this)">✕</button></td>
   </tr>`;
 }
